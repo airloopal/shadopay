@@ -1,0 +1,568 @@
+// PayFlow — Privacy-focused payment platform for high-risk merchants
+// Prisma schema. Run `pnpm db:migrate` after editing.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ──────────────────────────────────────────────────────────────
+// Auth (Better Auth compatible tables)
+// ──────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  role          UserRole  @default(MERCHANT_OWNER)
+  twoFactorEnabled Boolean @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions      Session[]
+  accounts      Account[]
+  memberships   MerchantMember[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  providerId        String
+  accountId         String
+  passwordHash      String?
+  accessToken       String?
+  refreshToken       String?
+  expiresAt         DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+enum UserRole {
+  PLATFORM_ADMIN
+  PLATFORM_COMPLIANCE
+  PLATFORM_SUPPORT
+  MERCHANT_OWNER
+  MERCHANT_ADMIN
+  MERCHANT_ANALYST
+}
+
+// ──────────────────────────────────────────────────────────────
+// Merchant / KYB
+// ──────────────────────────────────────────────────────────────
+
+model Merchant {
+  id               String            @id @default(cuid())
+  legalName        String
+  displayName      String
+  slug             String            @unique
+  website          String?
+  category         String
+  riskTier         RiskTier          @default(STANDARD)
+  status           MerchantStatus    @default(PENDING)
+  settlementCurrency String          @default("USD")
+  settlementSchedule SettlementSchedule @default(WEEKLY)
+  reservePercentage  Decimal          @default(0) @db.Decimal(5, 2)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  members          MerchantMember[]
+  kyb              KybProfile?
+  apiKeys          ApiKey[]
+  webhookEndpoints WebhookEndpoint[]
+  transactions     Transaction[]
+  paymentLinks     PaymentLink[]
+  customers        Customer[]
+  settlements      Settlement[]
+  invoices         Invoice[]
+  notifications    Notification[]
+  complianceAlerts ComplianceAlert[]
+  auditLogs        AuditLog[]
+  branding         MerchantBranding?
+
+  @@index([status])
+  @@map("merchants")
+}
+
+enum MerchantStatus {
+  PENDING
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  SUSPENDED
+  OFFBOARDED
+}
+
+enum RiskTier {
+  LOW
+  STANDARD
+  ELEVATED
+  HIGH
+}
+
+enum SettlementSchedule {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  MANUAL
+}
+
+model MerchantMember {
+  id         String        @id @default(cuid())
+  merchantId String
+  userId     String
+  role       MerchantRole  @default(ADMIN)
+  createdAt  DateTime      @default(now())
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([merchantId, userId])
+  @@map("merchant_members")
+}
+
+enum MerchantRole {
+  OWNER
+  ADMIN
+  ANALYST
+  SUPPORT
+}
+
+model KybProfile {
+  id                  String       @id @default(cuid())
+  merchantId          String       @unique
+  registeredName      String
+  registrationNumber  String?
+  jurisdiction         String
+  incorporationDate    DateTime?
+  businessType        String
+  beneficialOwners    Json         // array of { name, ownershipPct, dob, country }
+  documents           KybDocument[]
+  status              KybStatus    @default(PENDING)
+  reviewerId          String?
+  reviewedAt          DateTime?
+  rejectionReason     String?
+  submittedAt         DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@map("kyb_profiles")
+}
+
+enum KybStatus {
+  PENDING
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  ADDITIONAL_INFO_REQUIRED
+}
+
+model KybDocument {
+  id           String     @id @default(cuid())
+  kybProfileId String
+  type         String     // e.g. certificate_of_incorporation, proof_of_address, id_document
+  fileKey      String     // Cloudflare R2 object key
+  fileName     String
+  uploadedAt   DateTime   @default(now())
+
+  kybProfile KybProfile @relation(fields: [kybProfileId], references: [id], onDelete: Cascade)
+
+  @@map("kyb_documents")
+}
+
+model MerchantBranding {
+  id           String   @id @default(cuid())
+  merchantId   String   @unique
+  logoKey      String?
+  primaryColor String   @default("#4F46E5")
+  supportEmail String?
+  supportUrl   String?
+  updatedAt    DateTime @updatedAt
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@map("merchant_branding")
+}
+
+// ──────────────────────────────────────────────────────────────
+// Customers
+// ──────────────────────────────────────────────────────────────
+
+model Customer {
+  id          String   @id @default(cuid())
+  merchantId  String
+  email       String
+  name        String?
+  phone       String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  merchant     Merchant      @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  invoices     Invoice[]
+
+  @@unique([merchantId, email])
+  @@map("customers")
+}
+
+// ──────────────────────────────────────────────────────────────
+// Payments
+// ──────────────────────────────────────────────────────────────
+
+model Transaction {
+  id                String            @id @default(cuid())
+  merchantId        String
+  customerId        String?
+  paymentLinkId     String?
+  invoiceId         String?
+  amount            Decimal           @db.Decimal(14, 2)
+  currency          String            @default("USD")
+  status            TransactionStatus @default(PENDING)
+  paymentMethod     String            @default("card")
+  processorReference String?
+  descriptor        String?
+  riskScore         Int?              // 0-100, from transaction monitoring
+  flagged           Boolean           @default(false)
+  flagReason         String?
+  metadata          Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  merchant     Merchant      @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  customer     Customer?     @relation(fields: [customerId], references: [id])
+  paymentLink  PaymentLink?  @relation(fields: [paymentLinkId], references: [id])
+  invoice      Invoice?      @relation(fields: [invoiceId], references: [id])
+  refunds      Refund[]
+  settlementItems SettlementItem[]
+  alerts       ComplianceAlert[]
+
+  @@index([merchantId, status])
+  @@index([merchantId, createdAt])
+  @@map("transactions")
+}
+
+enum TransactionStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  SETTLED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+  DISPUTED
+  CANCELLED
+}
+
+model Refund {
+  id            String       @id @default(cuid())
+  transactionId String
+  amount        Decimal      @db.Decimal(14, 2)
+  reason        String?
+  status        RefundStatus @default(PENDING)
+  createdAt     DateTime     @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@map("refunds")
+}
+
+enum RefundStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model PaymentLink {
+  id           String           @id @default(cuid())
+  merchantId   String
+  title        String
+  description  String?
+  amount       Decimal?         @db.Decimal(14, 2) // null = customer-entered amount
+  currency     String           @default("USD")
+  slug         String           @unique
+  status       PaymentLinkStatus @default(ACTIVE)
+  usageLimit   Int?
+  usageCount   Int              @default(0)
+  expiresAt    DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  merchant     Merchant      @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([merchantId])
+  @@map("payment_links")
+}
+
+enum PaymentLinkStatus {
+  ACTIVE
+  PAUSED
+  EXPIRED
+  ARCHIVED
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  merchantId  String
+  customerId  String
+  number      String
+  amount      Decimal       @db.Decimal(14, 2)
+  currency    String        @default("USD")
+  status      InvoiceStatus @default(DRAFT)
+  dueDate     DateTime?
+  paidAt      DateTime?
+  lineItems   Json          // array of { description, quantity, unitAmount }
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  merchant     Merchant      @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  customer     Customer      @relation(fields: [customerId], references: [id])
+  transactions Transaction[]
+
+  @@unique([merchantId, number])
+  @@map("invoices")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  VOID
+}
+
+// ──────────────────────────────────────────────────────────────
+// Settlements
+// ──────────────────────────────────────────────────────────────
+
+model Settlement {
+  id            String           @id @default(cuid())
+  merchantId    String
+  periodStart   DateTime
+  periodEnd     DateTime
+  grossAmount   Decimal          @db.Decimal(14, 2)
+  feeAmount     Decimal          @db.Decimal(14, 2)
+  reserveAmount Decimal          @db.Decimal(14, 2) @default(0)
+  netAmount     Decimal          @db.Decimal(14, 2)
+  currency      String           @default("USD")
+  status        SettlementStatus @default(SCHEDULED)
+  paidOutAt     DateTime?
+  destination   String?          // masked bank account reference
+  createdAt     DateTime         @default(now())
+
+  merchant Merchant         @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  items    SettlementItem[]
+
+  @@index([merchantId, status])
+  @@map("settlements")
+}
+
+enum SettlementStatus {
+  SCHEDULED
+  PROCESSING
+  PAID
+  FAILED
+  HELD
+}
+
+model SettlementItem {
+  id            String     @id @default(cuid())
+  settlementId  String
+  transactionId String
+  amount        Decimal    @db.Decimal(14, 2)
+
+  settlement  Settlement  @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+
+  @@unique([settlementId, transactionId])
+  @@map("settlement_items")
+}
+
+// ──────────────────────────────────────────────────────────────
+// Developers: API keys, webhooks, request logs
+// ──────────────────────────────────────────────────────────────
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  merchantId  String
+  name        String
+  keyPrefix   String    // first chars shown in UI, e.g. pk_live_8f2a
+  hashedKey   String    @unique
+  mode        ApiMode   @default(LIVE)
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  merchant Merchant     @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  requestLogs ApiRequestLog[]
+
+  @@index([merchantId])
+  @@map("api_keys")
+}
+
+enum ApiMode {
+  LIVE
+  SANDBOX
+}
+
+model WebhookEndpoint {
+  id          String   @id @default(cuid())
+  merchantId  String
+  url         String
+  description String?
+  secret      String
+  events      String[] // e.g. ["payment.succeeded", "payment.failed"]
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  merchant  Merchant       @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  deliveries WebhookDelivery[]
+
+  @@map("webhook_endpoints")
+}
+
+model WebhookDelivery {
+  id          String   @id @default(cuid())
+  endpointId  String
+  event       String
+  payload     Json
+  statusCode  Int?
+  success     Boolean  @default(false)
+  attempt     Int      @default(1)
+  createdAt   DateTime @default(now())
+
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@map("webhook_deliveries")
+}
+
+model ApiRequestLog {
+  id         String   @id @default(cuid())
+  apiKeyId   String
+  method     String
+  path       String
+  statusCode Int
+  latencyMs  Int
+  createdAt  DateTime @default(now())
+
+  apiKey ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@index([apiKeyId, createdAt])
+  @@map("api_request_logs")
+}
+
+// ──────────────────────────────────────────────────────────────
+// Compliance & Monitoring
+// ──────────────────────────────────────────────────────────────
+
+model ComplianceAlert {
+  id            String         @id @default(cuid())
+  merchantId    String
+  transactionId String?
+  type          AlertType
+  severity      AlertSeverity  @default(MEDIUM)
+  status        AlertStatus    @default(OPEN)
+  description   String
+  assignedTo    String?
+  resolvedAt    DateTime?
+  resolutionNote String?
+  createdAt     DateTime       @default(now())
+
+  merchant    Merchant     @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+
+  @@index([merchantId, status])
+  @@map("compliance_alerts")
+}
+
+enum AlertType {
+  VELOCITY
+  HIGH_RISK_AMOUNT
+  CHARGEBACK_RATE
+  GEO_MISMATCH
+  DUPLICATE_CARD
+  MANUAL_FLAG
+  SANCTIONS_SCREEN
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  ESCALATED
+  DISMISSED
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorId     String?
+  merchantId  String?
+  action      String   // e.g. "merchant.approved", "api_key.revoked"
+  targetType  String
+  targetId    String
+  metadata    Json?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  actor    User?     @relation(fields: [actorId], references: [id])
+  merchant Merchant? @relation(fields: [merchantId], references: [id])
+
+  @@index([merchantId, createdAt])
+  @@index([action])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  merchantId String
+  title      String
+  body       String
+  type       String   @default("info") // info | success | warning | danger
+  readAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId, readAt])
+  @@map("notifications")
+}
