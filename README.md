@@ -205,3 +205,87 @@ scaffold and design system:
   to run `prisma migrate dev` against; run that command locally to verify/regenerate it (or
   `prisma migrate resolve --applied` first if earlier phases synced their schema via `db push`
   rather than migrations).
+
+## Phase 4 — Core payments engine
+
+No changes to the public website, Legal Centre, Trust Centre, design system, or existing
+onboarding/payment-link functionality. This phase built the internal orchestration layer
+every future real payment rail will plug into — still sandbox-only, no card collection, no
+real processing, no crypto.
+
+- **New models** (`prisma/schema.prisma`, additive only): `Payment` (the lifecycle object —
+  DRAFT → PENDING → PROCESSING → SUCCEEDED/FAILED/EXPIRED/CANCELLED, with SUCCEEDED →
+  REFUNDED), `CheckoutSession`, `PaymentEvent` (timeline log), `LedgerEntry`,
+  `MerchantWallet` (available/pending/processing/reserve balances + lifetime volume/fees),
+  and `Receipt`. `Transaction` (existing model) gained `paymentId`, `fee`, and `netAmount`
+  so it stays the reporting/detail record while `Payment` is the orchestration object.
+- **The engine** (`features/payments-engine/engine.ts`) is the single code path allowed to
+  change a Payment's status. Every transition in one call: updates `Payment.status`, writes
+  a `PaymentEvent`, writes an `AuditLog` entry, updates the `MerchantWallet` balances,
+  writes `LedgerEntry` rows, and keeps the attached `Transaction` in sync — exactly the
+  Phase 4 brief's "every status change must..." checklist, enforced structurally rather
+  than by convention.
+- **Fees** (`features/payments-engine/fees.ts`): 2.9% + $0.30, matching the illustrative
+  rate already shown on the public Pricing page, so the numbers agree across the product.
+- **Hosted checkout** (`app/pay/[slug]`, `features/checkout/checkout-flow.tsx`): now creates
+  a real `CheckoutSession` + `Payment` (+ `Transaction`) on load, and the Pay/Cancel buttons
+  drive the engine through `submitPaymentAction`/`cancelPaymentAction`
+  (`features/payments-engine/actions.ts`) instead of faking client-side state. Every screen,
+  animation, and timing from Phase 3 is unchanged — only the data behind it is now real.
+- **Hosted receipts** (`app/receipts/[receiptNumber]`): a real, shareable receipt page backed
+  by the `Receipt` table, separate from the in-checkout receipt step.
+- **Transaction detail** (merchant: `app/(dashboard)/transactions/[id]`) and **payment
+  detail** (admin: `app/(admin)/admin/payments/[id]`) share `PaymentTimeline` and
+  `LedgerEntriesTable` (`components/payments/`) to show the full event timeline and ledger
+  for a payment. The admin payment detail page also has a clearly-labeled "sandbox only"
+  manual status override so every lifecycle state — including failed/expired/refunded, which
+  the customer-facing checkout never triggers on its own — can be exercised on demand.
+- **Search & filters**: merchant Transactions and admin Payments both filter by status,
+  currency, amount range, reference, and client email; admin also has an all-up Ledger view.
+- **Dashboard**: "Available payout" and "Pending payout" now read from `MerchantWallet`
+  (`availableBalance`, and `pendingBalance + processingBalance + reserveBalance`
+  respectively) instead of the `Settlement` model — the wallet is now the authoritative
+  record of where a merchant's money sits.
+- **Seed data** (`prisma/seed.ts`): rewritten to generate a realistic spread of payments
+  (six succeeded, one refunded, one failed, one cancelled, one left mid-processing) with
+  matching transactions, ledger entries, receipts, and a populated wallet, so the dashboard
+  and admin views aren't empty on first run.
+
+### Bugs found and fixed during review
+- A `checkoutSession.updateMany({ where: { id: payment.checkoutSessionId ?? undefined } })`
+  would, for any payment without a checkout session, have matched and updated **every**
+  checkout session on the platform (Prisma treats an `undefined` filter value as "no
+  filter"). Replaced with a guarded `update` scoped to a real id.
+- `serializeDecimal` returned `T` — the same type it was given — even though it converts
+  Decimal fields to strings at runtime, so callers silently kept a `Decimal`-typed field
+  that was actually a `string`. Fixed to return an accurately-typed
+  `Omit<T, K> & Record<K, string | null>`, which surfaced one incorrect
+  `as typeof receipt` cast (now removed) and two call sites missing a cast (now fixed by
+  widening `formatCurrency` to accept `string | null | undefined`).
+- The seed script's "left mid-processing" demo payment updated the wallet and ledger for a
+  PROCESSING hold but never updated `Payment.status`/`Transaction.status` away from their
+  initial DRAFT/PENDING values — it would have displayed as "Draft" while money was
+  reserved. Fixed to set `PROCESSING`/`AUTHORIZED` explicitly.
+
+### What to run locally
+There's no live database in this sandbox, so none of the above could be verified against a
+real Postgres instance or a real `tsc` run (network access for `npm install` is also
+disabled here). Before relying on this:
+```bash
+pnpm install
+pnpm typecheck                 # tsc --noEmit — please run this first
+pnpm db:migrate                # applies prisma/migrations/20260707140000_phase4_payments_engine
+pnpm db:seed
+pnpm dev
+```
+If your database was previously synced with `prisma db push` rather than migrations, you'll
+need to baseline it first (`prisma migrate resolve --applied <migration-name>` for each
+existing migration folder) before `db:migrate` will apply cleanly.
+
+### Manual test flow
+Sign in as the seeded merchant → Payment Links → create a link → open `/pay/<slug>` → click
+Pay → observe the success/receipt screens → check Transactions (fee/net columns, click
+through to detail for the timeline + ledger) → check Overview (wallet-backed payout figures,
+"Recent payment links") → sign in as `admin@shadopay.dev` → Admin → Payments → open the same
+payment → use the sandbox status override to move it to REFUNDED → confirm the ledger,
+wallet, and receipt status all update.
