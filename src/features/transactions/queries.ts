@@ -4,6 +4,11 @@ import type { TransactionStatus } from "@prisma/client";
 export interface TransactionFilters {
   status?: TransactionStatus;
   query?: string; // matches id or customer email
+  currency?: string;
+  reference?: string;
+  clientEmail?: string;
+  minAmount?: number;
+  maxAmount?: number;
   from?: Date;
   to?: Date;
   page?: number;
@@ -11,11 +16,24 @@ export interface TransactionFilters {
 }
 
 export async function listTransactions(merchantId: string, filters: TransactionFilters = {}) {
-  const { status, query, from, to, page = 1, pageSize = 20 } = filters;
+  const { status, query, currency, reference, clientEmail, minAmount, maxAmount, from, to, page = 1, pageSize = 20 } = filters;
 
   const where = {
     merchantId,
     ...(status ? { status } : {}),
+    ...(currency ? { currency } : {}),
+    ...(reference ? { descriptor: { contains: reference, mode: "insensitive" as const } } : {}),
+    ...(clientEmail
+      ? { payment: { clientEmail: { contains: clientEmail, mode: "insensitive" as const } } }
+      : {}),
+    ...(minAmount != null || maxAmount != null
+      ? {
+          amount: {
+            ...(minAmount != null ? { gte: minAmount } : {}),
+            ...(maxAmount != null ? { lte: maxAmount } : {}),
+          },
+        }
+      : {}),
     ...(from || to
       ? {
           createdAt: {
@@ -29,6 +47,7 @@ export async function listTransactions(merchantId: string, filters: TransactionF
           OR: [
             { id: { contains: query, mode: "insensitive" as const } },
             { customer: { email: { contains: query, mode: "insensitive" as const } } },
+            { descriptor: { contains: query, mode: "insensitive" as const } },
           ],
         }
       : {}),
@@ -37,7 +56,7 @@ export async function listTransactions(merchantId: string, filters: TransactionF
   const [rows, total] = await Promise.all([
     prisma.transaction.findMany({
       where,
-      include: { customer: true },
+      include: { customer: true, payment: true },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -46,7 +65,13 @@ export async function listTransactions(merchantId: string, filters: TransactionF
   ]);
 
   return {
-    transactions: rows.map((tx) => ({ ...tx, amount: tx.amount.toString() })),
+    transactions: rows.map((tx) => ({
+      ...tx,
+      amount: tx.amount.toString(),
+      fee: tx.fee?.toString() ?? null,
+      netAmount: tx.netAmount?.toString() ?? null,
+      clientEmail: tx.payment?.clientEmail ?? null,
+    })),
     total,
     page,
     pageSize,
@@ -58,9 +83,9 @@ export async function listTransactions(merchantId: string, filters: TransactionF
 export async function transactionsToCsv(merchantId: string, filters: TransactionFilters = {}) {
   const { transactions } = await listTransactions(merchantId, { ...filters, page: 1, pageSize: 5000 });
 
-  const header = ["id", "amount", "currency", "status", "payment_method", "created_at"];
+  const header = ["id", "amount", "fee", "net_amount", "currency", "status", "reference", "created_at"];
   const rows = transactions.map((tx) =>
-    [tx.id, tx.amount, tx.currency, tx.status, tx.paymentMethod, tx.createdAt.toISOString()].join(",")
+    [tx.id, tx.amount, tx.fee ?? "", tx.netAmount ?? "", tx.currency, tx.status, tx.descriptor ?? "", tx.createdAt.toISOString()].join(",")
   );
 
   return [header.join(","), ...rows].join("\n");

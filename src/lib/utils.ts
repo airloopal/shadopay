@@ -8,9 +8,10 @@ export function cn(...inputs: ClassValue[]) {
 
 /** Format a Decimal/number as currency, defaulting to the merchant's settlement currency. */
 export function formatCurrency(
-  amount: number | string,
+  amount: number | string | null | undefined,
   currency: string = "USD"
 ): string {
+  if (amount == null) return formatCurrency(0, currency);
   const value = typeof amount === "string" ? parseFloat(amount) : amount;
   return new Intl.NumberFormat("en-US", {
     style: "currency",

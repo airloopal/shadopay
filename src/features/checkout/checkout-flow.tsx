@@ -1,14 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, XCircle, Lock, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCurrency, formatDateTime, initials } from "@/lib/utils";
+import { submitPaymentAction, cancelPaymentAction } from "@/features/payments-engine/actions";
 
 interface CheckoutFormProps {
+  paymentId: string;
   merchantName: string;
   title: string;
   description: string | null;
@@ -23,7 +26,12 @@ interface CheckoutFormProps {
 
 type Step = "form" | "processing" | "success" | "receipt" | "cancelled";
 
+function wait(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
 export function CheckoutFlow({
+  paymentId,
   merchantName,
   title,
   description,
@@ -35,17 +43,36 @@ export function CheckoutFlow({
   successUrl,
   cancelUrl,
 }: CheckoutFormProps) {
+  const router = useRouter();
   const [step, setStep] = useState<Step>("form");
   const [customerAmount, setCustomerAmount] = useState(amount ?? "");
-  const [transactionRef] = useState(() => `chk_${Math.random().toString(36).slice(2, 12)}`);
-  const [paidAt] = useState(() => new Date());
+  const [clientEmail, setClientEmail] = useState("");
+  const [result, setResult] = useState<{ receiptNumber: string | null; amount: string; paidAt: Date } | null>(null);
 
-  const finalAmount = amount ?? customerAmount;
+  const finalAmount = result?.amount ?? amount ?? customerAmount;
 
-  function handlePay(e: React.FormEvent) {
+  async function handlePay(e: React.FormEvent) {
     e.preventDefault();
     setStep("processing");
-    setTimeout(() => setStep("success"), 1100);
+
+    const [response] = await Promise.all([
+      submitPaymentAction(paymentId, amount ? undefined : Number(customerAmount), clientEmail || undefined),
+      wait(1100),
+    ]);
+
+    setResult({ receiptNumber: response.receiptNumber, amount: response.amount, paidAt: new Date() });
+    setStep("success");
+  }
+
+  async function handleCancel() {
+    setStep("cancelled");
+    await cancelPaymentAction(paymentId);
+  }
+
+  function handleTryAgain() {
+    setCustomerAmount(amount ?? "");
+    setStep("form");
+    router.refresh();
   }
 
   return (
@@ -97,6 +124,17 @@ export function CheckoutFlow({
                 )}
 
                 <div className="space-y-1.5">
+                  <Label htmlFor="clientEmail">Email for receipt (optional)</Label>
+                  <Input
+                    id="clientEmail"
+                    type="email"
+                    value={clientEmail}
+                    onChange={(e) => setClientEmail(e.target.value)}
+                    placeholder="you@example.com"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
                   <Label htmlFor="cardNumber">Card number</Label>
                   <Input id="cardNumber" placeholder="4242 4242 4242 4242" required />
                 </div>
@@ -117,7 +155,7 @@ export function CheckoutFlow({
 
                 <button
                   type="button"
-                  onClick={() => setStep("cancelled")}
+                  onClick={handleCancel}
                   className="block w-full text-center text-xs text-muted-foreground hover:text-foreground"
                 >
                   Cancel and go back
@@ -213,15 +251,26 @@ export function CheckoutFlow({
                     <span className="font-mono text-xs text-foreground">{reference}</span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Transaction reference</span>
-                  <span className="font-mono text-xs text-foreground">{transactionRef}</span>
-                </div>
+                {result?.receiptNumber && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Receipt number</span>
+                    <span className="font-mono text-xs text-foreground">{result.receiptNumber}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Date</span>
-                  <span className="text-foreground">{formatDateTime(paidAt)}</span>
+                  <span className="text-foreground">{formatDateTime(result?.paidAt ?? new Date())}</span>
                 </div>
               </div>
+
+              {result?.receiptNumber && (
+                <a
+                  href={`/receipts/${result.receiptNumber}`}
+                  className="mt-4 block text-center text-xs text-accent hover:underline"
+                >
+                  View hosted receipt page
+                </a>
+              )}
 
               {supportEmail && (
                 <p className="mt-6 text-center text-xs text-muted-foreground">
@@ -247,7 +296,7 @@ export function CheckoutFlow({
               <h1 className="text-2xl font-light text-foreground">Payment cancelled</h1>
               <p className="text-sm text-muted-foreground">No charge was made to your card.</p>
               <div className="mt-2 flex w-full flex-col gap-2">
-                <Button variant="outline" className="w-full" onClick={() => setStep("form")}>
+                <Button variant="outline" className="w-full" onClick={handleTryAgain}>
                   Try again
                 </Button>
                 {cancelUrl && (

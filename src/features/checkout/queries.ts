@@ -14,6 +14,7 @@ export async function getPaymentLinkForCheckout(slug: string) {
 
   return {
     id: link.id,
+    merchantId: link.merchantId,
     title: link.title,
     description: link.description,
     reference: link.reference,

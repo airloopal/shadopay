@@ -21,6 +21,7 @@ export async function getDashboardStats(merchantId: string): Promise<DashboardSt
     capturedAmountAgg,
     refundsAgg,
     settlementsBalanceAgg,
+    wallet,
   ] = await Promise.all([
     prisma.transaction.aggregate({
       where: { merchantId, createdAt: { gte: todayStart }, status: { in: ["CAPTURED", "SETTLED"] } },
@@ -54,6 +55,7 @@ export async function getDashboardStats(merchantId: string): Promise<DashboardSt
       where: { merchantId, status: "PAID" },
       _sum: { netAmount: true },
     }),
+    prisma.merchantWallet.findUnique({ where: { merchantId } }),
   ]);
 
   const successRate = totalCount === 0 ? 0 : Math.round((capturedCount / totalCount) * 1000) / 10;
@@ -61,12 +63,20 @@ export async function getDashboardStats(merchantId: string): Promise<DashboardSt
   const capturedAmount = Number(capturedAmountAgg._sum.amount ?? 0);
   const refundRate = capturedAmount === 0 ? 0 : Math.round((refundsTotal / capturedAmount) * 1000) / 10;
 
+  // Available/pending payout now come from the payments engine's wallet
+  // (features/payments-engine), which is the authoritative ledger of where
+  // a merchant's money actually sits — rather than the Settlement model,
+  // which represents completed payout batches.
+  const availablePayout = Number(wallet?.availableBalance ?? 0);
+  const pendingPayout =
+    Number(wallet?.pendingBalance ?? 0) + Number(wallet?.processingBalance ?? 0) + Number(wallet?.reserveBalance ?? 0);
+
   return {
     todaysVolume: Number(todaysAgg._sum.amount ?? 0),
     revenueThisMonth: Number(monthAgg._sum.amount ?? 0),
     pendingSettlement: Number(availablePayoutAgg._sum.netAmount ?? 0) + Number(pendingPayoutAgg._sum.netAmount ?? 0),
-    availablePayout: Number(availablePayoutAgg._sum.netAmount ?? 0),
-    pendingPayout: Number(pendingPayoutAgg._sum.netAmount ?? 0),
+    availablePayout,
+    pendingPayout,
     successfulPayments: capturedCount,
     refundsTotal,
     refundRate,
