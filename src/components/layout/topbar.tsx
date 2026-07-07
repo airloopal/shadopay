@@ -13,6 +13,7 @@ import { initials } from "@/lib/utils";
 import { BusinessSwitcher } from "@/components/layout/business-switcher";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { NotificationCentre, type NotificationItem } from "@/features/notifications/notification-centre";
+import { EnvironmentBadge } from "@/components/layout/environment-badge";
 import type { NavLink } from "@/config/nav";
 
 interface TopbarProps {
@@ -23,6 +24,7 @@ interface TopbarProps {
   notifications?: NotificationItem[];
   mobileNavItems?: NavLink[];
   mobileNavBrand?: string;
+  showEnvironmentBadge?: boolean;
 }
 
 export function Topbar({
@@ -33,6 +35,7 @@ export function Topbar({
   notifications = [],
   mobileNavItems,
   mobileNavBrand = "ShadoPay",
+  showEnvironmentBadge = false,
 }: TopbarProps) {
   return (
     <header className="flex h-16 items-center justify-between gap-4 border-b border-border bg-surface/70 px-4 backdrop-blur-md sm:px-6">
@@ -42,6 +45,8 @@ export function Topbar({
         {merchantName && merchantId && (
           <BusinessSwitcher businesses={[{ id: merchantId, name: merchantName }]} activeId={merchantId} />
         )}
+
+        {showEnvironmentBadge && <EnvironmentBadge />}
 
         <div className="relative hidden w-72 sm:block">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" strokeWidth={1.75} />
