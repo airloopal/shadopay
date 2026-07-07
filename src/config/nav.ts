@@ -11,6 +11,7 @@ import {
   Settings,
   LifeBuoy,
   BookOpenText,
+  Receipt,
 } from "lucide-react";
 
 export interface NavLink {
@@ -29,6 +30,7 @@ export const merchantNav: NavLink[] = [
   { label: "Payments", href: "/payments", icon: CreditCard },
   { label: "Transactions", href: "/transactions", icon: ArrowLeftRight },
   { label: "Payment Links", href: "/payment-links", icon: Link2 },
+  { label: "Receipts", href: "/receipts", icon: Receipt },
   { label: "Clients", href: "/customers", icon: Users },
   { label: "Payouts", href: "/settlements", icon: Wallet },
   { label: "Developers", href: "/developers", icon: Code2 },
@@ -42,6 +44,7 @@ export const adminNav: NavLink[] = [
   { label: "Businesses", href: "/admin/merchants", icon: Users },
   { label: "Verification Queue", href: "/admin/kyb", icon: ShieldCheck },
   { label: "Payments", href: "/admin/payments", icon: CreditCard },
+  { label: "Receipts", href: "/admin/receipts", icon: Receipt },
   { label: "Flagged Transactions", href: "/admin/flagged", icon: ArrowLeftRight },
   { label: "Ledger", href: "/admin/ledger", icon: BookOpenText },
   { label: "Payouts", href: "/admin/settlements", icon: Wallet },

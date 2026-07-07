@@ -6,6 +6,7 @@ import { nanoid } from "nanoid";
 import { requireSession } from "@/lib/session";
 import { requireDraftMerchant } from "@/features/onboarding/queries";
 import { prisma } from "@/lib/prisma";
+import { sendMerchantWelcomeEmail, sendVerificationSubmittedEmail } from "@/lib/email";
 import type { PayoutMethod, SettlementSchedule } from "@prisma/client";
 
 export interface ActionState {
@@ -65,6 +66,9 @@ export async function startOnboardingAction() {
         targetId: merchant.id,
       },
     });
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    await sendMerchantWelcomeEmail(session.user.email, session.user.name, `${appUrl}/onboarding`);
   }
 
   redirect("/onboarding/business");
@@ -203,6 +207,10 @@ export async function saveVerificationAction(_prev: ActionState, formData: FormD
         targetId: kyb.id,
       },
     });
+
+    if (hasIdFile && hasAddressFile && merchant.contactEmail) {
+      await sendVerificationSubmittedEmail(merchant.contactEmail, merchant.tradingName ?? merchant.displayName);
+    }
   }
 
   await prisma.merchant.update({

@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { prisma } from "@/lib/prisma";
 import { calculateFee, calculateNetAmount, splitReserve } from "@/features/payments-engine/fees";
+import { sendPaymentReceivedEmail, sendReceiptEmail } from "@/lib/email";
 import type { Prisma, PaymentStatus, TransactionStatus } from "@prisma/client";
 
 type Tx = Prisma.TransactionClient;
@@ -139,7 +140,7 @@ export interface TransitionOptions {
  * and keeps the attached Transaction's status in sync.
  */
 export async function transitionPayment(paymentId: string, to: PaymentStatus, opts: TransitionOptions = {}) {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const payment = await tx.payment.findUniqueOrThrow({
       where: { id: paymentId },
       include: { merchant: true, transaction: true },
@@ -359,8 +360,9 @@ export async function transitionPayment(paymentId: string, to: PaymentStatus, op
       },
     });
 
+    let receiptNumber: string | null = null;
     if (to === "SUCCEEDED") {
-      const receiptNumber = `RCPT-${new Date().getFullYear()}-${nanoid(8).toUpperCase()}`;
+      receiptNumber = `RCPT-${new Date().getFullYear()}-${nanoid(8).toUpperCase()}`;
       await tx.receipt.create({
         data: {
           paymentId: payment.id,
@@ -374,8 +376,36 @@ export async function transitionPayment(paymentId: string, to: PaymentStatus, op
       await logPaymentEvent(tx, payment.id, "receipt_generated", `Receipt ${receiptNumber} generated`);
     }
 
-    return updated;
+    return { updated, merchant: payment.merchant, receiptNumber };
   });
+
+  // Transactional emails are external I/O — sent after the DB transaction
+  // has committed, never from inside it. A failed send never blocks or
+  // rolls back the payment update (see safeSend in lib/email.ts).
+  if (to === "SUCCEEDED") {
+    const { updated, merchant, receiptNumber } = result;
+    const amountLabel = `${updated.currency} ${Number(updated.amount).toFixed(2)}`;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+    if (merchant.contactEmail) {
+      await sendPaymentReceivedEmail(
+        merchant.contactEmail,
+        merchant.tradingName ?? merchant.displayName,
+        amountLabel,
+        updated.reference
+      );
+    }
+    if (updated.clientEmail && receiptNumber) {
+      await sendReceiptEmail(
+        updated.clientEmail,
+        merchant.tradingName ?? merchant.displayName,
+        amountLabel,
+        `${appUrl}/receipts/${receiptNumber}`
+      );
+    }
+  }
+
+  return result.updated;
 }
 
 function checkoutSessionShouldClose(status: PaymentStatus) {

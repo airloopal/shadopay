@@ -79,6 +79,30 @@ export async function listPayments(filters: PaymentFilters = {}) {
   };
 }
 
+/** Builds CSV text for the admin Payments list (used by the export route). */
+export async function paymentsToCsv(filters: PaymentFilters = {}) {
+  const { payments } = await listPayments({ ...filters, page: 1, pageSize: 5000 });
+  const header = ["id", "merchant", "amount", "fee", "net_amount", "currency", "status", "reference", "client_email", "reviewed", "created_at"];
+  const rows = payments.map((p) =>
+    [
+      p.id,
+      p.merchant.displayName,
+      p.amount ?? "",
+      p.fee ?? "",
+      p.netAmount ?? "",
+      p.currency,
+      p.status,
+      p.reference ?? "",
+      p.clientEmail ?? "",
+      p.reviewedAt ? "yes" : "no",
+      p.createdAt.toISOString(),
+    ]
+      .map((v) => `"${String(v).replaceAll('"', '""')}"`)
+      .join(",")
+  );
+  return [header.join(","), ...rows].join("\n");
+}
+
 export async function getPaymentDetail(paymentId: string) {
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
@@ -176,4 +200,34 @@ export async function getAllLedgerEntries(limit = 100) {
     take: limit,
   });
   return rows.map((e) => serializeDecimal(e, ["amount"]));
+}
+
+export interface ReceiptFilters {
+  merchantId?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export async function listReceipts(filters: ReceiptFilters = {}) {
+  const { page = 1, pageSize = 20 } = filters;
+  const where = filters.merchantId ? { merchantId: filters.merchantId } : {};
+
+  const [rows, total] = await Promise.all([
+    prisma.receipt.findMany({
+      where,
+      include: { merchant: true, payment: { include: { paymentLink: true } } },
+      orderBy: { issuedAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.receipt.count({ where }),
+  ]);
+
+  return {
+    receipts: rows.map((r) => serializeDecimal(r, ["amount"])),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
 }
