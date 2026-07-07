@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Settings,
   LifeBuoy,
+  BookOpenText,
 } from "lucide-react";
 
 export interface NavLink {
@@ -40,7 +41,9 @@ export const adminNav: NavLink[] = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
   { label: "Businesses", href: "/admin/merchants", icon: Users },
   { label: "Verification Queue", href: "/admin/kyb", icon: ShieldCheck },
+  { label: "Payments", href: "/admin/payments", icon: CreditCard },
   { label: "Flagged Transactions", href: "/admin/flagged", icon: ArrowLeftRight },
+  { label: "Ledger", href: "/admin/ledger", icon: BookOpenText },
   { label: "Payouts", href: "/admin/settlements", icon: Wallet },
   { label: "Audit Log", href: "/admin/audit-log", icon: Code2 },
 ];
