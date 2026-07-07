@@ -1,4 +1,5 @@
 import { Download } from "lucide-react";
+import Link from "next/link";
 import { requireActiveMerchant } from "@/lib/session";
 import { listTransactions } from "@/features/transactions/queries";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -9,7 +10,7 @@ import { formatCurrency, formatDateTime } from "@/lib/utils";
 import type { TransactionStatus } from "@prisma/client";
 
 interface PageProps {
-  searchParams: Promise<{ status?: string; q?: string; page?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; reference?: string; clientEmail?: string; page?: string }>;
 }
 
 export default async function TransactionsPage({ searchParams }: PageProps) {
@@ -20,6 +21,8 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
   const { transactions, total, totalPages } = await listTransactions(merchant.id, {
     status: params.status as TransactionStatus | undefined,
     query: params.q,
+    reference: params.reference,
+    clientEmail: params.clientEmail,
     page,
   });
 
@@ -37,8 +40,10 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
         </form>
       </div>
 
-      <form className="flex items-center gap-3" method="GET">
+      <form className="flex flex-wrap items-center gap-3" method="GET">
         <Input name="q" placeholder="Search by transaction ID or customer email" defaultValue={params.q} className="max-w-sm" />
+        <Input name="reference" placeholder="Reference" defaultValue={params.reference} className="max-w-[10rem]" />
+        <Input name="clientEmail" placeholder="Client email" defaultValue={params.clientEmail} className="max-w-[12rem]" />
         <select
           name="status"
           defaultValue={params.status ?? ""}
@@ -52,6 +57,7 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
           <option value="FAILED">Failed</option>
           <option value="REFUNDED">Refunded</option>
           <option value="DISPUTED">Disputed</option>
+          <option value="CANCELLED">Cancelled</option>
         </select>
         <Button type="submit" variant="outline">Filter</Button>
       </form>
@@ -60,9 +66,10 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
         <TableHeader>
           <TableRow>
             <TableHead>ID</TableHead>
-            <TableHead>Customer</TableHead>
+            <TableHead>Client</TableHead>
             <TableHead>Amount</TableHead>
-            <TableHead>Method</TableHead>
+            <TableHead>Fee</TableHead>
+            <TableHead>Net</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Date</TableHead>
           </TableRow>
@@ -70,17 +77,22 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
         <TableBody>
           {transactions.length === 0 && (
             <TableRow>
-              <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+              <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                 No transactions match these filters.
               </TableCell>
             </TableRow>
           )}
           {transactions.map((tx) => (
             <TableRow key={tx.id}>
-              <TableCell className="font-mono text-xs text-muted-foreground">{tx.id.slice(0, 14)}</TableCell>
-              <TableCell>{tx.customer?.email ?? "Guest"}</TableCell>
+              <TableCell className="font-mono text-xs text-muted-foreground">
+                <Link href={`/transactions/${tx.id}`} className="hover:text-accent hover:underline">
+                  {tx.id.slice(0, 14)}
+                </Link>
+              </TableCell>
+              <TableCell>{tx.clientEmail ?? tx.customer?.email ?? "Guest"}</TableCell>
               <TableCell className="font-medium">{formatCurrency(tx.amount, tx.currency)}</TableCell>
-              <TableCell className="capitalize text-muted-foreground">{tx.paymentMethod}</TableCell>
+              <TableCell className="text-muted-foreground">{tx.fee ? formatCurrency(tx.fee, tx.currency) : "—"}</TableCell>
+              <TableCell className="text-muted-foreground">{tx.netAmount ? formatCurrency(tx.netAmount, tx.currency) : "—"}</TableCell>
               <TableCell>
                 <StatusBadge status={tx.status} />
               </TableCell>
