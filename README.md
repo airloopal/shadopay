@@ -159,3 +159,49 @@ turned the single-page landing site into a full corporate site living under a ne
 All of the above reuse the same design tokens, `Card`/`Button` primitives, and
 `MarketingPageHeader` component introduced in Phase 1.1 — no new colors or type scales
 were introduced.
+
+## Phase 3 — Merchant onboarding & core payment platform
+
+No changes to the public website, Legal Centre, Trust Centre, or the overall project
+architecture. This phase built the first functional merchant journey on top of the existing
+scaffold and design system:
+
+- **Onboarding wizard** (`/onboarding`, `features/onboarding/`): 7 steps — Welcome, Business
+  Information, Business Category, Verification, Payout Preferences, Branding, Complete — each
+  its own route so progress is bookmarkable and resumable. `Merchant.onboardingStep` tracks
+  progress server-side; every "Continue" click persists that step immediately (autosave via
+  Server Actions, not just at the end), and returning users are redirected back to exactly
+  where they left off. Validation uses `zod` + `useActionState` for inline field errors.
+- **Business Category**: a searchable, card-based selector (`category-selector-form.tsx`)
+  blending the brief's example categories with ShadoPay's existing high-risk verticals from
+  the Solutions page, stored as a plain string on `Merchant.category` for future compliance
+  workflows to key off of.
+- **Verification step**: business registration number, government ID and proof-of-address
+  "uploads" (recorded as `KybDocument` metadata only — filename and a placeholder key; no
+  file storage or external verification provider is wired up yet, per the brief), and a
+  website-review notice. Submitting creates/updates a `KybProfile` with status Not Started /
+  Submitted / Under Review / Approved / Rejected.
+- **Payout Preferences**: settlement currency, frequency (Daily/Weekly/Monthly), and a new
+  `Merchant.payoutMethod` enum (Bank Transfer / Wire Transfer / Other) — storage only, no
+  payout integration.
+- **Branding**: logo (metadata-only "upload"), brand color, a new `MerchantBranding.receiptName`
+  field, support email/URL — all now read live by the hosted checkout page.
+- **Payment Links** (`/payment-links`): real create/list/pause flow extended with reference,
+  success URL, cancel URL, and expiry date, validated with `zod` + `useActionState` via
+  `create-link-form.tsx`.
+- **Hosted checkout** (`/pay/[slug]`): now shows the merchant's reference, receipt name, and
+  brand color pulled from `MerchantBranding`; expired/inactive links show a friendly message
+  instead of a raw 404; added a full Cancel flow alongside the existing Success/Receipt
+  screens, with "Return to merchant" links driven by the payment link's success/cancel URLs.
+  Still no real payment processing — the Pay button only drives this front-end experience.
+- **Dashboard**: added a "Profile completion" checklist card (links back into whichever
+  onboarding step is incomplete) and a "Recent payment links" widget, alongside the existing
+  verification-status and quick-actions cards.
+- **Database**: additive-only changes — new columns on `Merchant` (business profile fields,
+  `onboardingStep`, `onboardingCompletedAt`, `payoutMethod`), `receiptName` on
+  `MerchantBranding`, and `reference`/`successUrl`/`cancelUrl` on `PaymentLink`. A new
+  `PayoutMethod` enum was added. See `prisma/migrations/20260707120000_phase3_merchant_onboarding/`
+  for the corresponding SQL — hand-authored in this environment since there's no live database
+  to run `prisma migrate dev` against; run that command locally to verify/regenerate it (or
+  `prisma migrate resolve --applied` first if earlier phases synced their schema via `db push`
+  rather than migrations).

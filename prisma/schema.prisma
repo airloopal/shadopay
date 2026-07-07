@@ -96,6 +96,23 @@ model Merchant {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
+  // Phase 3 — merchant onboarding & business profile fields.
+  // All additive and optional (or defaulted) so existing rows remain valid.
+  tradingName        String?
+  country            String?
+  addressLine1       String?
+  addressLine2       String?
+  city               String?
+  region             String?
+  postalCode         String?
+  contactEmail       String?
+  supportEmail       String?
+  phone              String?
+  businessDescription String?
+  payoutMethod       PayoutMethod?
+  onboardingStep     Int              @default(1)
+  onboardingCompletedAt DateTime?
+
   members          MerchantMember[]
   kyb              KybProfile?
   apiKeys          ApiKey[]
@@ -121,6 +138,12 @@ enum MerchantStatus {
   REJECTED
   SUSPENDED
   OFFBOARDED
+}
+
+enum PayoutMethod {
+  BANK_TRANSFER
+  WIRE_TRANSFER
+  OTHER
 }
 
 enum RiskTier {
@@ -206,7 +229,8 @@ model MerchantBranding {
   id           String   @id @default(cuid())
   merchantId   String   @unique
   logoKey      String?
-  primaryColor String   @default("#4F46E5")
+  receiptName  String?
+  primaryColor String   @default("#D4AF37")
   supportEmail String?
   supportUrl   String?
   updatedAt    DateTime @updatedAt
@@ -310,12 +334,15 @@ model PaymentLink {
   merchantId   String
   title        String
   description  String?
+  reference    String?
   amount       Decimal?         @db.Decimal(14, 2) // null = customer-entered amount
   currency     String           @default("USD")
   slug         String           @unique
   status       PaymentLinkStatus @default(ACTIVE)
   usageLimit   Int?
   usageCount   Int              @default(0)
+  successUrl   String?
+  cancelUrl    String?
   expiresAt    DateTime?
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
