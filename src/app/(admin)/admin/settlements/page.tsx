@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { markSettlementProcessingAction, markSettlementPaidAction } from "@/features/settlements/admin-actions";
 
 async function getAllSettlements() {
   const rows = await prisma.settlement.findMany({
@@ -29,12 +31,13 @@ export default async function AdminSettlementsPage() {
             <TableHead>Period</TableHead>
             <TableHead>Net amount</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {settlements.length === 0 && (
             <TableRow>
-              <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+              <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
                 No settlements yet.
               </TableCell>
             </TableRow>
@@ -47,6 +50,20 @@ export default async function AdminSettlementsPage() {
               </TableCell>
               <TableCell className="font-medium">{formatCurrency(s.netAmount, s.currency)}</TableCell>
               <TableCell><StatusBadge status={s.status} /></TableCell>
+              <TableCell className="text-right">
+                {s.status === "SCHEDULED" && (
+                  <form action={markSettlementProcessingAction}>
+                    <input type="hidden" name="settlementId" value={s.id} />
+                    <Button size="sm" variant="outline" type="submit">Mark processing</Button>
+                  </form>
+                )}
+                {s.status === "PROCESSING" && (
+                  <form action={markSettlementPaidAction}>
+                    <input type="hidden" name="settlementId" value={s.id} />
+                    <Button size="sm" variant="outline" type="submit">Mark paid</Button>
+                  </form>
+                )}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>

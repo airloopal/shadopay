@@ -21,6 +21,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           notifications={notifications}
           mobileNavItems={merchantNav}
           mobileNavBrand="ShadoPay"
+          showEnvironmentBadge
         />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <PageTransition>{children}</PageTransition>

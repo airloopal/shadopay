@@ -16,6 +16,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           userEmail={session.user.email}
           mobileNavItems={adminNav}
           mobileNavBrand="ShadoPay Admin"
+          showEnvironmentBadge
         />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <PageTransition>{children}</PageTransition>

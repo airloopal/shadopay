@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Download } from "lucide-react";
 import { listPayments } from "@/features/payments-engine/queries";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -35,9 +36,20 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-light tracking-tight text-foreground">Payments</h1>
-        <p className="text-sm text-muted-foreground">{total.toLocaleString()} payments across all merchants</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-light tracking-tight text-foreground">Payments</h1>
+          <p className="text-sm text-muted-foreground">{total.toLocaleString()} payments across all merchants</p>
+        </div>
+        <form action="/api/admin/payments/export" method="GET">
+          <input type="hidden" name="status" value={params.status ?? ""} />
+          <input type="hidden" name="currency" value={params.currency ?? ""} />
+          <input type="hidden" name="reference" value={params.reference ?? ""} />
+          <input type="hidden" name="clientEmail" value={params.clientEmail ?? ""} />
+          <Button variant="secondary" type="submit">
+            <Download className="h-4 w-4" /> Export CSV
+          </Button>
+        </form>
       </div>
 
       <form className="flex flex-wrap items-center gap-3" method="GET">
@@ -81,13 +93,14 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
             <TableHead>Client</TableHead>
             <TableHead>Amount</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Reviewed</TableHead>
             <TableHead>Created</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {payments.length === 0 && (
             <TableRow>
-              <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+              <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                 No payments match these filters.
               </TableCell>
             </TableRow>
@@ -105,6 +118,7 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
               <TableCell>
                 <StatusBadge status={p.status} />
               </TableCell>
+              <TableCell className="text-muted-foreground">{p.reviewedAt ? "Yes" : "No"}</TableCell>
               <TableCell className="text-muted-foreground">{formatDateTime(p.createdAt)}</TableCell>
             </TableRow>
           ))}

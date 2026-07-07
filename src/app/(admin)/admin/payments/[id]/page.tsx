@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, FlaskConical } from "lucide-react";
+import { ArrowLeft, FlaskConical, CheckCircle2 } from "lucide-react";
 import { getPaymentDetail } from "@/features/payments-engine/queries";
-import { adminUpdatePaymentStatusAction } from "@/features/payments-engine/actions";
+import { adminUpdatePaymentStatusAction, markPaymentReviewedAction } from "@/features/payments-engine/actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -95,6 +95,18 @@ export default async function AdminPaymentDetailPage({ params }: PageProps) {
               />
               {payment.failureReason && <DetailRow label="Failure reason" value={payment.failureReason} />}
               <DetailRow label="Created" value={formatDateTime(payment.createdAt)} />
+              <DetailRow
+                label="Reviewed"
+                value={
+                  payment.reviewedAt ? (
+                    <span className="flex items-center gap-1.5 text-success">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> {formatDateTime(payment.reviewedAt)}
+                    </span>
+                  ) : (
+                    "Not reviewed"
+                  )
+                }
+              />
             </CardContent>
           </Card>
 
@@ -102,6 +114,23 @@ export default async function AdminPaymentDetailPage({ params }: PageProps) {
         </div>
 
         <div className="space-y-6">
+          {!payment.reviewedAt && (
+            <Card>
+              <CardContent className="flex items-center justify-between gap-3 p-5">
+                <div>
+                  <p className="text-sm text-foreground">Not yet reviewed</p>
+                  <p className="text-xs text-muted-foreground">Mark this payment as manually reviewed.</p>
+                </div>
+                <form action={markPaymentReviewedAction}>
+                  <input type="hidden" name="paymentId" value={payment.id} />
+                  <Button type="submit" size="sm" variant="outline">
+                    Mark reviewed
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="border-warning/30">
             <CardHeader className="flex-row items-center gap-2 space-y-0">
               <FlaskConical className="h-4 w-4 text-warning" strokeWidth={1.75} />
