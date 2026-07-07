@@ -289,3 +289,97 @@ through to detail for the timeline + ledger) → check Overview (wallet-backed p
 "Recent payment links") → sign in as `admin@shadopay.dev` → Admin → Payments → open the same
 payment → use the sandbox status override to move it to REFUNDED → confirm the ledger,
 wallet, and receipt status all update.
+
+## Phase 5 — Pilot-ready working version
+
+No new marketing pages, no UI redesign, no subscriptions/crypto/multi-provider/team
+permissions/mobile app — this phase wired one real payment provider (Stripe) into the
+existing checkout, engine, and admin/merchant surfaces so a pilot merchant can actually get
+paid.
+
+- **Payment provider abstraction** (`features/payment-provider/`): a `PaymentProvider`
+  interface (`createCheckoutSession`, `confirmPayment`, `refundPayment`,
+  `getPaymentStatus`, `handleWebhook`) with one real implementation, `StripeProvider`.
+  `PAYMENT_PROVIDER` selects the implementation (only `"stripe"` exists); nothing is
+  hardcoded — `PAYMENT_PROVIDER_API_KEY`, `PAYMENT_PROVIDER_SECRET`, and
+  `PAYMENT_WEBHOOK_SECRET` come entirely from the environment (see `.env.example` for what
+  each maps to). Sandbox vs live mode is derived automatically from the API key's prefix
+  (`sk_test_...` vs `sk_live_...`) rather than a separate flag, so the displayed mode can
+  never disagree with the key actually in use.
+- **Checkout redirect** (`app/pay/[slug]`, `features/checkout/checkout-flow.tsx`): the
+  card-number placeholder form is gone. The hosted checkout page now shows merchant
+  branding/amount/reference (unchanged look) with a "Continue to secure payment" button
+  that creates a real Stripe Checkout Session and redirects the browser there. Cancelling
+  before redirect still works the same way. Compliance wording updated to "Secure private
+  payment" (not "anonymous").
+- **Return page** (`app/pay/[slug]/return`): where Stripe sends the customer back. Reads
+  the *real* Payment status from the database rather than assuming success — if the
+  webhook hasn't landed yet it shows a "Confirming your payment…" state that auto-refreshes
+  once, otherwise it shows success/receipt/failed/cancelled/refunded based on actual state.
+- **Webhook handler** (`app/api/webhooks/stripe/route.ts`): verifies the Stripe signature,
+  normalizes the event, and drives the same Phase 4 `transitionPayment` engine used
+  everywhere else — so a webhook-driven success updates Payment, Transaction, wallet,
+  ledger, receipt, PaymentEvent, and AuditLog through the identical code path as the admin's
+  manual override, rather than a separate parallel implementation.
+- **Refunds now call the real provider**: the admin manual status tool, when moving a
+  payment to REFUNDED, calls `StripeProvider.refundPayment` first (if the payment has a
+  real `providerPaymentId`) and only updates our internal state if that succeeds.
+- **Live-mode approval gate**: checkout blocks with a clear message if the provider is in
+  live mode and the merchant's `status` isn't `APPROVED` — checked both on page load and
+  again in the checkout-session action, using the existing `Merchant.status` field (no
+  schema change needed).
+- **Sandbox/Live badge**: shown in both the merchant and admin topbars
+  (`components/layout/environment-badge.tsx`); checkout also shows a "Test mode — no real
+  charge will be made" note when in sandbox.
+- **Admin pilot tools**: added "mark payment reviewed" (`Payment.reviewedAt/reviewedBy`,
+  shown on payment detail), a Receipts list, and CSV export for Payments — alongside the
+  already-existing approve/reject/suspend business, view payments/transactions/ledger.
+- **Merchant pilot tools**: added a Receipts list (nav: Receipts) — payment links, copy
+  link, transactions, available balance, payout status, and CSV export already existed
+  from earlier phases.
+- **Transactional emails** (`lib/email.ts`, `lib/email-template.ts`): merchant welcome
+  (on first onboarding start), verification submitted (on KYB document submission),
+  payment received + receipt sent (on the engine's SUCCEEDED transition, after the DB
+  transaction commits — never inside it), and payout pending/completed (new admin actions
+  on the Payouts page that move a settlement to Processing/Paid). All share one branded
+  HTML layout. Every send is wrapped in try/catch so a missing/invalid `RESEND_API_KEY`
+  never breaks the calling flow.
+- **Database**: additive only — `Payment` gained `providerName`, `providerSessionId`
+  (unique), `providerPaymentId`, `environment`, `reviewedAt`, `reviewedBy`. See
+  `prisma/migrations/20260707160000_phase5_provider_integration/`.
+
+### What to run locally
+Same caveat as Phase 4: no live database, no network access for `npm install`, so none of
+this could be run against a real Postgres instance, a real Stripe test account, or `tsc`
+in this environment.
+```bash
+pnpm install                      # adds the new `stripe` dependency
+pnpm typecheck                    # please run this first
+pnpm db:migrate                   # applies the Phase 5 migration
+pnpm db:seed
+pnpm dev
+```
+Then, to actually exercise checkout end-to-end:
+1. Create a Stripe account (or use an existing one) and grab a **test** secret key.
+2. Set `PAYMENT_PROVIDER_API_KEY=sk_test_...` and, once you've registered a webhook
+   endpoint (`stripe listen --forward-to localhost:3000/api/webhooks/stripe` for local
+   dev), set `PAYMENT_WEBHOOK_SECRET` to the signing secret the Stripe CLI/dashboard gives
+   you.
+3. Restart the dev server so the new env vars are picked up.
+
+### Manual test flow (mirrors the brief's end result)
+Merchant signs up → completes onboarding → creates a payment link → opens `/pay/<slug>` →
+clicks "Continue to secure payment" → completes payment on Stripe's test checkout page
+(card `4242 4242 4242 4242`) → lands back on the return page (shows "Confirming…" briefly,
+then success once the webhook lands) → merchant's Transactions page shows the new
+transaction with fee/net → Overview shows the wallet balance move → client receives (in a
+configured environment) a receipt email linking to `/receipts/<number>` → admin can find
+the same payment under Admin → Payments, mark it reviewed, or refund it (which calls Stripe
+for real).
+
+### Known limitation
+Every `/pay/[slug]` page load creates a new internal Payment/CheckoutSession/Transaction
+row (this was already true from Phase 4 and is unchanged here) — a customer who reloads the
+checkout page before paying will get a fresh Payment each time. For a private pilot with a
+handful of merchants this is an acceptable, low-volume tradeoff; a future phase should reuse
+an existing OPEN CheckoutSession for the same payment link within a short window instead.

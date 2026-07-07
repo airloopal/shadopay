@@ -368,6 +368,13 @@ model Payment {
   clientIp          String?
   riskScore         Int?
   failureReason     String?
+  // Phase 5 — real provider integration
+  providerName        String?
+  providerSessionId   String?   @unique
+  providerPaymentId   String?
+  environment         String    @default("sandbox") // "sandbox" | "live"
+  reviewedAt          DateTime?
+  reviewedBy          String?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   expiresAt         DateTime?
