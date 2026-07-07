@@ -10,6 +10,7 @@ const STATUS_TONE_MAP: Record<string, StatusTone> = {
   // Transactions
   CAPTURED: "success",
   SETTLED: "success",
+  SUCCEEDED: "success",
   AUTHORIZED: "accent" as StatusTone,
   PENDING: "warning",
   FAILED: "danger",
