@@ -10,5 +10,6 @@ export default async function RootPage() {
   }
 
   const merchant = await getActiveMerchant(session.user.id);
-  redirect(merchant ? "/dashboard" : "/onboarding");
+  if (!merchant) redirect("/onboarding");
+  redirect(merchant.onboardingCompletedAt ? "/dashboard" : "/onboarding");
 }

@@ -5,6 +5,8 @@ import { RecentActivity } from "@/components/dashboard/recent-activity";
 import { LiveTransactionFeed } from "@/components/dashboard/live-transaction-feed";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { VerificationStatusCard } from "@/components/dashboard/verification-status-card";
+import { OnboardingProgressCard } from "@/components/dashboard/onboarding-progress-card";
+import { RecentPaymentLinks } from "@/components/dashboard/recent-payment-links";
 import { requireActiveMerchant } from "@/lib/session";
 import {
   getDashboardStats,
@@ -12,21 +14,27 @@ import {
   getMonthlyRevenueSeries,
   getRecentActivity,
 } from "@/features/dashboard/queries";
+import { getProfileCompletion } from "@/features/onboarding/queries";
+import { listPaymentLinks } from "@/features/payment-links/queries";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/utils";
 
 export default async function DashboardPage() {
   const { merchant } = await requireActiveMerchant();
 
-  const [stats, transactions, revenueSeries, activity, kyb] = await Promise.all([
+  const [stats, transactions, revenueSeries, activity, kyb, branding, recentLinks] = await Promise.all([
     getDashboardStats(merchant.id),
     getRecentTransactions(merchant.id),
     getMonthlyRevenueSeries(merchant.id),
     getRecentActivity(merchant.id),
     prisma.kybProfile.findUnique({ where: { merchantId: merchant.id } }),
+    prisma.merchantBranding.findUnique({ where: { merchantId: merchant.id } }),
+    listPaymentLinks(merchant.id, { page: 1, pageSize: 5 }),
   ]);
 
   const currency = merchant.settlementCurrency;
+  const profile = getProfileCompletion({ merchant, branding, kyb });
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://pay.shadopay.dev";
 
   return (
     <div className="space-y-8">
@@ -89,10 +97,16 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <RevenueChart data={revenueSeries} currency={currency} />
+          <RecentPaymentLinks links={recentLinks.links} appUrl={appUrl} />
           <LiveTransactionFeed transactions={transactions} />
         </div>
 
         <div className="space-y-6">
+          <OnboardingProgressCard
+            percentage={profile.percentage}
+            items={profile.items}
+            isComplete={Boolean(merchant.onboardingCompletedAt) && profile.percentage === 100}
+          />
           <VerificationStatusCard status={kyb?.status ?? null} />
           <QuickActions />
           <RecentActivity items={activity} />

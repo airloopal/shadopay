@@ -1,14 +1,13 @@
-import { Plus } from "lucide-react";
 import { requireActiveMerchant } from "@/lib/session";
 import { listPaymentLinks } from "@/features/payment-links/queries";
-import { createPaymentLinkAction, togglePaymentLinkAction } from "@/features/payment-links/actions";
+import { togglePaymentLinkAction } from "@/features/payment-links/actions";
+import { CreatePaymentLinkForm } from "@/features/payment-links/create-link-form";
 import { CopyLinkButton } from "@/features/payment-links/copy-link-button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { PaymentLinkStatus } from "@prisma/client";
 
@@ -44,39 +43,7 @@ export default async function PaymentLinksPage({ searchParams }: PageProps) {
             <CardTitle>New payment link</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <form action={createPaymentLinkAction} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="title">Title</Label>
-                <Input id="title" name="title" placeholder="e.g. Consulting retainer" required />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="description">Description (optional)</Label>
-                <Input id="description" name="description" placeholder="Shown to the customer at checkout" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="amount">Amount</Label>
-                  <Input id="amount" name="amount" type="number" step="0.01" min="0" placeholder="0.00" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="currency">Currency</Label>
-                  <select
-                    id="currency"
-                    name="currency"
-                    defaultValue={merchant.settlementCurrency}
-                    className="h-10 w-full rounded-sm border border-border bg-surface-raised px-3 text-sm text-foreground"
-                  >
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                    <option value="GBP">GBP</option>
-                  </select>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">Leave amount blank to let the customer enter one.</p>
-              <Button type="submit" className="w-full">
-                <Plus className="h-4 w-4" /> Create link
-              </Button>
-            </form>
+            <CreatePaymentLinkForm defaultCurrency={merchant.settlementCurrency} />
           </CardContent>
         </Card>
 
@@ -105,8 +72,8 @@ export default async function PaymentLinksPage({ searchParams }: PageProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Title</TableHead>
+                  <TableHead>Reference</TableHead>
                   <TableHead>Amount</TableHead>
-                  <TableHead>Used</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -126,10 +93,10 @@ export default async function PaymentLinksPage({ searchParams }: PageProps) {
                       <div className="text-foreground">{link.title}</div>
                       <CopyLinkButton url={`${appUrl}/pay/${link.slug}`} />
                     </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{link.reference ?? "—"}</TableCell>
                     <TableCell>
                       {link.amount ? formatCurrency(link.amount, link.currency) : "Customer-entered"}
                     </TableCell>
-                    <TableCell>{link.usageCount}{link.usageLimit ? ` / ${link.usageLimit}` : ""}</TableCell>
                     <TableCell>
                       <StatusBadge status={link.status} />
                     </TableCell>
