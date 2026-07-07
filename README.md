@@ -125,3 +125,37 @@ unchanged. This pass restyled the product and renamed sections for a more premiu
 - **Redesigned pages**: Overview (revenue/payout KPIs, live transaction feed, quick
   actions, verification status), Payment Links (search, status filter, pagination, copy
   link), and Trust Centre (verification documents, monitoring status, risk alerts).
+
+## Phase 1.2 — Company foundation (public site, legal, trust, help, status)
+
+Still no changes to auth, database schema, or the merchant/admin app routing. This pass
+turned the single-page landing site into a full corporate site living under a new
+`(marketing)` route group, sharing one nav/footer layout:
+
+- **Public pages**: Home, About, Solutions, Pricing, Developers, Security, Trust Centre
+  (`/trust`), Documentation, Contact, Careers, Partners, Status, Help Centre, News, Blog
+  (News/Blog added as "coming soon" placeholders since the footer links to them).
+- **Footer** (`features/marketing/marketing-footer.tsx`): Stripe-style grouped sitemap —
+  Company, Legal, Developers, Support — plus a live "all systems operational" indicator.
+- **Legal Centre** (`/legal`): 14 original policy documents (Terms, Privacy, Cookies,
+  Acceptable Use, Merchant Agreement, Refund Policy, Security Policy, AML Policy,
+  Verification Policy, Complaint Procedure, DPA, Subprocessor List, Platform Rules,
+  Content Standards), all built on a shared `LegalDocument`/`LegalSection` layout for
+  consistent formatting. Every page ends with a notice that it's an MVP template pending
+  legal counsel review, and jurisdiction-specific gaps are marked with `[Placeholder: ...]`.
+- **Trust Centre** (`/trust`): expanded into an 11-section portal (security overview,
+  encryption, infrastructure, availability, compliance roadmap, incident response,
+  responsible disclosure, system status, business verification, monitoring, merchant
+  protection) with a sticky in-page nav.
+- **Status page** (`/status`, `features/status/`): per-service operational state, 90-day
+  uptime history bars, and an incident log — backed by static dummy data in
+  `features/status/data.ts`, ready to swap for a real monitoring feed later.
+- **Help Centre** (`/help`, `features/help/`): 10 categories with placeholder articles,
+  client-side search, and individual article pages at `/help/[slug]`.
+- **Contact** (`/contact`): categorized channels (Sales, Support, Partnerships, Legal,
+  Media, Responsible Disclosure) plus a simple message form (UI only, not wired to email
+  yet).
+
+All of the above reuse the same design tokens, `Card`/`Button` primitives, and
+`MarketingPageHeader` component introduced in Phase 1.1 — no new colors or type scales
+were introduced.
