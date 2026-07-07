@@ -33,7 +33,7 @@
     "clsx": "2.1.1",
     "tailwind-merge": "2.5.4",
     "lucide-react": "0.454.0",
-    "recharts": "3.0.0",
+    "recharts": "^3.0.0",
     "zod": "3.23.8",
     "react-hook-form": "7.53.2",
     "@hookform/resolvers": "3.9.1",
@@ -54,7 +54,7 @@
     "resend": "4.0.0",
     "date-fns": "4.1.0",
     "nanoid": "5.0.8",
-    "framer-motion": "11.11.17",
+    "framer-motion": "^11.15.0",
     "stripe": "17.3.1"
   },
   "devDependencies": {
@@ -65,4 +65,7 @@
     "eslint-config-next": "15.1.0",
     "tsx": "4.19.2"
   }
+  "overrides": {
+  "react-remove-scroll": "^2.6.2"
+}
 }
