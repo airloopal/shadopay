@@ -48,10 +48,13 @@ export interface CreatePaymentLinkInput {
   merchantId: string;
   title: string;
   description?: string;
+  reference?: string;
   amount?: number;
   currency?: string;
   usageLimit?: number;
   expiresAt?: Date;
+  successUrl?: string;
+  cancelUrl?: string;
 }
 
 export async function createPaymentLink(input: CreatePaymentLinkInput) {
@@ -61,10 +64,13 @@ export async function createPaymentLink(input: CreatePaymentLinkInput) {
       merchantId: input.merchantId,
       title: input.title,
       description: input.description,
+      reference: input.reference,
       amount: input.amount,
       currency: input.currency ?? "USD",
       usageLimit: input.usageLimit,
       expiresAt: input.expiresAt,
+      successUrl: input.successUrl,
+      cancelUrl: input.cancelUrl,
       slug,
     },
   });

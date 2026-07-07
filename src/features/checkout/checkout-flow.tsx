@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, Lock, ArrowLeft } from "lucide-react";
+import { CheckCircle2, XCircle, Lock, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,16 +12,32 @@ interface CheckoutFormProps {
   merchantName: string;
   title: string;
   description: string | null;
+  reference: string | null;
   amount: string | null;
   currency: string;
+  primaryColor: string;
+  supportEmail: string | null;
+  successUrl: string | null;
+  cancelUrl: string | null;
 }
 
-type Step = "form" | "processing" | "success" | "receipt";
+type Step = "form" | "processing" | "success" | "receipt" | "cancelled";
 
-export function CheckoutFlow({ merchantName, title, description, amount, currency }: CheckoutFormProps) {
+export function CheckoutFlow({
+  merchantName,
+  title,
+  description,
+  reference,
+  amount,
+  currency,
+  primaryColor,
+  supportEmail,
+  successUrl,
+  cancelUrl,
+}: CheckoutFormProps) {
   const [step, setStep] = useState<Step>("form");
   const [customerAmount, setCustomerAmount] = useState(amount ?? "");
-  const [reference] = useState(() => `chk_${Math.random().toString(36).slice(2, 12)}`);
+  const [transactionRef] = useState(() => `chk_${Math.random().toString(36).slice(2, 12)}`);
   const [paidAt] = useState(() => new Date());
 
   const finalAmount = amount ?? customerAmount;
@@ -46,12 +62,16 @@ export function CheckoutFlow({ merchantName, title, description, amount, currenc
               className="rounded-lg border border-border bg-card/90 p-8 shadow-glass"
             >
               <div className="flex flex-col items-center gap-3 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-muted text-sm font-medium text-accent">
+                <div
+                  className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-medium"
+                  style={{ backgroundColor: `${primaryColor}22`, color: primaryColor }}
+                >
                   {initials(merchantName)}
                 </div>
                 <p className="text-sm text-muted-foreground">{merchantName}</p>
                 <h1 className="text-2xl font-light text-foreground">{title}</h1>
                 {description && <p className="text-sm text-muted-foreground">{description}</p>}
+                {reference && <p className="font-mono text-xs text-muted-foreground">Ref: {reference}</p>}
               </div>
 
               <form onSubmit={handlePay} className="mt-8 space-y-4">
@@ -94,6 +114,14 @@ export function CheckoutFlow({ merchantName, title, description, amount, currenc
                 <Button type="submit" className="w-full" size="lg">
                   Pay {amount ? formatCurrency(amount, currency) : ""}
                 </Button>
+
+                <button
+                  type="button"
+                  onClick={() => setStep("cancelled")}
+                  className="block w-full text-center text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Cancel and go back
+                </button>
 
                 <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
                   <Lock className="h-3 w-3" /> Secured by ShadoPay
@@ -139,9 +167,16 @@ export function CheckoutFlow({ merchantName, title, description, amount, currenc
               <p className="text-sm text-muted-foreground">
                 {formatCurrency(finalAmount || "0", currency)} paid to {merchantName}
               </p>
-              <Button className="mt-2 w-full" onClick={() => setStep("receipt")}>
-                View receipt
-              </Button>
+              <div className="mt-2 flex w-full flex-col gap-2">
+                <Button className="w-full" onClick={() => setStep("receipt")}>
+                  View receipt
+                </Button>
+                {successUrl && (
+                  <Button variant="outline" className="w-full" asChild>
+                    <a href={successUrl}>Return to {merchantName}</a>
+                  </Button>
+                )}
+              </div>
             </motion.div>
           )}
 
@@ -172,14 +207,54 @@ export function CheckoutFlow({ merchantName, title, description, amount, currenc
                   <span className="text-muted-foreground">Description</span>
                   <span className="text-foreground">{title}</span>
                 </div>
+                {reference && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Merchant reference</span>
+                    <span className="font-mono text-xs text-foreground">{reference}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Reference</span>
-                  <span className="font-mono text-xs text-foreground">{reference}</span>
+                  <span className="text-muted-foreground">Transaction reference</span>
+                  <span className="font-mono text-xs text-foreground">{transactionRef}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Date</span>
                   <span className="text-foreground">{formatDateTime(paidAt)}</span>
                 </div>
+              </div>
+
+              {supportEmail && (
+                <p className="mt-6 text-center text-xs text-muted-foreground">
+                  Questions? Contact{" "}
+                  <a href={`mailto:${supportEmail}`} className="text-accent hover:underline">{supportEmail}</a>
+                </p>
+              )}
+            </motion.div>
+          )}
+
+          {step === "cancelled" && (
+            <motion.div
+              key="cancelled"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25 }}
+              className="flex flex-col items-center gap-4 rounded-lg border border-border bg-card/90 p-10 text-center shadow-glass"
+            >
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <XCircle className="h-7 w-7" strokeWidth={1.5} />
+              </div>
+              <h1 className="text-2xl font-light text-foreground">Payment cancelled</h1>
+              <p className="text-sm text-muted-foreground">No charge was made to your card.</p>
+              <div className="mt-2 flex w-full flex-col gap-2">
+                <Button variant="outline" className="w-full" onClick={() => setStep("form")}>
+                  Try again
+                </Button>
+                {cancelUrl && (
+                  <Button variant="ghost" className="w-full" asChild>
+                    <a href={cancelUrl}>Return to {merchantName}</a>
+                  </Button>
+                )}
               </div>
             </motion.div>
           )}

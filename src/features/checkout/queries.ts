@@ -16,13 +16,19 @@ export async function getPaymentLinkForCheckout(slug: string) {
     id: link.id,
     title: link.title,
     description: link.description,
+    reference: link.reference,
     amount: link.amount?.toString() ?? null,
     currency: link.currency,
     status: link.status,
+    expiresAt: link.expiresAt,
+    successUrl: link.successUrl,
+    cancelUrl: link.cancelUrl,
     merchant: {
-      displayName: link.merchant.displayName,
+      displayName: link.merchant.branding?.receiptName || link.merchant.tradingName || link.merchant.displayName,
       primaryColor: link.merchant.branding?.primaryColor ?? "#D4AF37",
-      supportEmail: link.merchant.branding?.supportEmail ?? null,
+      supportEmail: link.merchant.branding?.supportEmail ?? link.merchant.supportEmail ?? null,
+      supportUrl: link.merchant.branding?.supportUrl ?? null,
+      hasLogo: Boolean(link.merchant.branding?.logoKey),
     },
   };
 }
