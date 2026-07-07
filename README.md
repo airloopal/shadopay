@@ -1,4 +1,4 @@
-# PayFlow — Privacy-focused payment platform (MVP scaffold)
+# ShadoPay — Privacy-focused payment platform (MVP scaffold)
 
 A payment platform built for lawful high-risk merchants: hosted checkout, payment links,
 settlements, KYB, transaction monitoring, and an internal admin console.
@@ -103,3 +103,25 @@ pnpm dev
   before reaching client components, to avoid floating point drift.
 - Status enums are rendered through `<StatusBadge status={...} />`, which centralizes the
   color mapping so every feature area reads statuses the same way.
+
+## Phase 1.1 — Premium redesign
+
+The architecture, routing, auth, and database schema from the original scaffold are
+unchanged. This pass restyled the product and renamed sections for a more premium feel:
+
+- **Brand system**: new dark palette (`#0A0A0A` background, `#D4AF37` gold accent), 18px
+  radius, light-weight display type — all applied through the same semantic Tailwind
+  tokens (`bg-surface`, `text-muted-foreground`, etc.), so no component had to be rewritten
+  to pick up the new look.
+- **Navigation renamed** (labels only — hrefs untouched): Dashboard → Overview, Merchants →
+  Businesses, Customers → Clients, Settlements → Payouts, Compliance → Trust Centre.
+- **Motion**: added `framer-motion` for page transitions, a collapsible/animated sidebar,
+  an animated notification centre, and animated dashboard counters
+  (`components/ui/animated-counter.tsx`).
+- **New surfaces**: a public marketing landing page (`features/marketing/`), a hosted
+  checkout flow with form/processing/success/receipt screens
+  (`features/checkout/`, `app/pay/[slug]`), and a notification centre
+  (`features/notifications/`).
+- **Redesigned pages**: Overview (revenue/payout KPIs, live transaction feed, quick
+  actions, verification status), Payment Links (search, status filter, pagination, copy
+  link), and Trust Centre (verification documents, monitoring status, risk alerts).

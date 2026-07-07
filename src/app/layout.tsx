@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "PayFlow — Payments for high-risk merchants",
-  description: "Privacy-focused payment processing, built for compliant high-risk businesses.",
+  title: "ShadoPay — Payments built for modern businesses",
+  description: "Privacy-first payment infrastructure for compliant, modern online businesses.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

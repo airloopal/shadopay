@@ -36,9 +36,13 @@ export type SettlementDTO = Omit<Settlement, "grossAmount" | "feeAmount" | "rese
 
 export interface DashboardStats {
   todaysVolume: number;
+  revenueThisMonth: number;
   pendingSettlement: number;
+  availablePayout: number;
+  pendingPayout: number;
   successfulPayments: number;
   refundsTotal: number;
+  refundRate: number; // 0-100
   settlementBalance: number;
   successRate: number; // 0-100
 }
