@@ -51,7 +51,12 @@ export function RevenueChart({ data, currency = "USD" }: { data: RevenuePoint[];
                 borderRadius: 12,
                 color: "#F3F4F6",
               }}
-              formatter={(value: number) => [formatCurrency(value, currency), "Revenue"]}
+              formatter={(value) => {
+  const numericValue =
+    typeof value === "number" ? value : Number(value ?? 0);
+
+  return [formatCurrency(numericValue, currency), "Revenue"];
+}}
             />
             <Area
               type="monotone"
