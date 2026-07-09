@@ -6,163 +6,138 @@ import { CopyLinkButton } from "@/features/payment-links/copy-link-button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { formatCurrency, formatDate, cn } from "@/lib/utils";
-import type { PaymentLinkStatus } from "@prisma/client";
+import { Button } from "@/components/ui/button";
+import { formatCurrency, formatDate } from "@/lib/utils";
 
 interface PageProps {
-  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
+  searchParams: Promise<{ page?: string }>;
 }
+
+const PAGINATION_LINK_CLASS =
+  "inline-flex h-8 items-center justify-center rounded-sm border border-border px-3 text-xs text-foreground";
+const PAGINATION_LINK_DISABLED_CLASS = "pointer-events-none opacity-50";
 
 export default async function PaymentLinksPage({ searchParams }: PageProps) {
   const { merchant } = await requireActiveMerchant();
   const params = await searchParams;
   const page = params.page ? parseInt(params.page, 10) : 1;
 
-  const { links, total, totalPages } = await listPaymentLinks(merchant.id, {
-    query: params.q,
-    status: params.status as PaymentLinkStatus | undefined,
-    page,
-  });
+  const result = await listPaymentLinks(merchant.id, { page });
+  const links = result.links;
+  const total = result.total;
+  const totalPages = result.totalPages;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://pay.shadopay.dev";
-
   const isPrevDisabled = page <= 1;
   const isNextDisabled = page >= totalPages;
+  const prevHref = "?page=" + (page - 1);
+  const nextHref = "?page=" + (page + 1);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-light tracking-tight text-foreground">Payment links</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {total.toLocaleString()} shareable checkout links — no code required.
+          {total} shareable checkout links
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle>New payment link</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <CreatePaymentLinkForm defaultCurrency={merchant.settlementCurrency} />
-          </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Create payment link</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <CreatePaymentLinkForm defaultCurrency={merchant.settlementCurrency} />
+        </CardContent>
+      </Card>
 
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Your links</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-0">
-            <form className="flex items-center gap-3" method="GET">
-              <Input
-                name="q"
-                placeholder="Search by title or description"
-                defaultValue={params.q}
-                className="max-w-xs"
-              />
-              <select
-                name="status"
-                defaultValue={params.status ?? ""}
-                className="h-10 rounded-sm border border-border bg-surface-raised px-3 text-sm text-foreground"
-              >
-                <option value="">All statuses</option>
-                <option value="ACTIVE">Active</option>
-                <option value="PAUSED">Deactivated</option>
-                <option value="EXPIRED">Expired</option>
-                <option value="ARCHIVED">Archived</option>
-              </select>
-              <Button type="submit" variant="outline">
-                Filter
-              </Button>
-            </form>
-
-            <Table>
-              <TableHeader>
+      <Card>
+        <CardHeader>
+          <CardTitle>Your links</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Title</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {links.length === 0 ? (
                 <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Reference</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                    No payment links yet.
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {links.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
-                      No payment links match these filters.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {links.map((link) => (
-                  <TableRow key={link.id}>
-                    <TableCell>
-                      <div className="text-foreground">{link.title}</div>
-                      <CopyLinkButton url={`${appUrl}/pay/${link.slug}`} />
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {link.reference ?? "—"}
-                    </TableCell>
-                    <TableCell>
-                      {link.amount ? formatCurrency(link.amount, link.currency) : "Customer-entered"}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={link.status} />
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDate(link.createdAt)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <form
-                        action={togglePaymentLinkAction.bind(
-                          null,
-                          link.id,
-                          link.status === "ACTIVE" ? "PAUSED" : "ACTIVE"
-                        )}
-                      >
-                        <Button variant="outline" size="sm" type="submit">
-                          {link.status === "ACTIVE" ? "Deactivate" : "Activate"}
-                        </Button>
-                      </form>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+              ) : (
+                links.map((link) => {
+                  const nextStatus = link.status === "ACTIVE" ? "PAUSED" : "ACTIVE";
+                  const toggleAction = togglePaymentLinkAction.bind(null, link.id, nextStatus);
+                  const linkUrl = appUrl + "/pay/" + link.slug;
+                  const amountLabel = link.amount
+                    ? formatCurrency(link.amount, link.currency)
+                    : "Customer-entered";
 
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>
-                Page {page} of {totalPages}
-              </span>
-              <div className="flex gap-2">
-                
-                  href={isPrevDisabled ? undefined : `?page=${page - 1}`}
-                  aria-disabled={isPrevDisabled}
-                  className={cn(
-                    buttonVariants({ variant: "outline", size: "sm" }),
-                    isPrevDisabled && "pointer-events-none opacity-50"
-                  )}
-                >
-                  Previous
-                </a>
-                
-                  href={isNextDisabled ? undefined : `?page=${page + 1}`}
-                  aria-disabled={isNextDisabled}
-                  className={cn(
-                    buttonVariants({ variant: "outline", size: "sm" }),
-                    isNextDisabled && "pointer-events-none opacity-50"
-                  )}
-                >
-                  Next
-                </a>
-              </div>
+                  return (
+                    <TableRow key={link.id}>
+                      <TableCell>
+                        <div className="text-foreground">{link.title}</div>
+                        <CopyLinkButton url={linkUrl} />
+                      </TableCell>
+                      <TableCell>{amountLabel}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={link.status} />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(link.createdAt)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <form action={toggleAction}>
+                          <Button variant="outline" size="sm" type="submit">
+                            {link.status === "ACTIVE" ? "Deactivate" : "Activate"}
+                          </Button>
+                        </form>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+
+          <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+            <span>
+              Page {page} of {totalPages}
+            </span>
+            <div className="flex gap-2">
+              
+                href={prevHref}
+                className={
+                  isPrevDisabled
+                    ? PAGINATION_LINK_CLASS + " " + PAGINATION_LINK_DISABLED_CLASS
+                    : PAGINATION_LINK_CLASS
+                }
+              >
+                Previous
+              </a>
+              
+                href={nextHref}
+                className={
+                  isNextDisabled
+                    ? PAGINATION_LINK_CLASS + " " + PAGINATION_LINK_DISABLED_CLASS
+                    : PAGINATION_LINK_CLASS
+                }
+              >
+                Next
+              </a>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
