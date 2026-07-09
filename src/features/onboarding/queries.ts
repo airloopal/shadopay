@@ -24,7 +24,8 @@ export async function requireDraftMerchant() {
 
 /** Redirects to the step matching the merchant's current onboarding progress. */
 export function redirectToCurrentStep(onboardingStep: number): never {
-  redirect(`/onboarding/${stepByNumber(onboardingStep).slug}`);
+  const step = stepByNumber(onboardingStep) ?? stepByNumber(1);
+  redirect(`/onboarding/${step.slug}`);
 }
 
 export interface ProfileCompletionInput {
