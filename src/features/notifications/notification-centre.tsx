@@ -64,8 +64,10 @@ export function NotificationCentre({ notifications }: { notifications: Notificat
             <p className="px-3 py-8 text-center text-sm text-muted-foreground">You&apos;re all caught up.</p>
           )}
           {notifications.map((n) => {
-            const tone = toneIcon[n.type] ?? toneIcon.info;
-            const Icon = tone.icon;
+            const tone = toneIcon[n.type] || toneIcon.info;
+if (!tone) return null;
+
+const Icon = tone.icon;
             return (
               <div
                 key={n.id}
