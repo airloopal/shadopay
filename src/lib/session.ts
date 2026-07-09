@@ -24,7 +24,10 @@ export async function requireSession() {
 /** Requires the current user to hold one of the given platform roles. */
 export async function requireRole(...roles: UserRole[]) {
   const session = await requireSession();
-  if (!roles.includes(session.user.role as UserRole)) {
+  const user = session.user as typeof session.user & { role?: UserRole };
+  const role = user.role ?? "MERCHANT";
+
+if (!roles.includes(role)) {
     redirect("/dashboard");
   }
   return session;
