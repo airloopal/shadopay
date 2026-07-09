@@ -129,11 +129,11 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
         <span>Page {page} of {totalPages}</span>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" disabled={page <= 1} asChild>
-            <a href={`?page=${page - 1}`}>Previous</a>
-          </Button>
-          <Button variant="outline" size="sm" disabled={page >= totalPages} asChild>
-            <a href={`?page=${page + 1}`}>Next</a>
-          </Button>
+  <a href={`?page=${page - 1}`}>Previous</a>
+</Button>
+<Button variant="outline" size="sm" disabled={page >= totalPages} asChild>
+  <a href={`?page=${page + 1}`}>Next</a>
+</Button>
         </div>
       </div>
     </div>
