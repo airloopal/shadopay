@@ -129,28 +129,25 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
         <span>Page {page} of {totalPages}</span>
         <div className="flex gap-2">
           <a
-  href={page <= 1 ? "#" : `?page=${page - 1}`}
-  aria-disabled={page <= 1}
-  className={`inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium transition-colors ${
-    page <= 1
-      ? "pointer-events-none opacity-50"
-      : "hover:bg-accent hover:text-accent-foreground"
-  }`}
->
-  Previous
-</a>
-
-<a
-  href={page >= totalPages ? "#" : `?page=${page + 1}`}
-  aria-disabled={page >= totalPages}
-  className={`inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium transition-colors ${
-    page >= totalPages
-      ? "pointer-events-none opacity-50"
-      : "hover:bg-accent hover:text-accent-foreground"
-  }`}
->
-  Next
-</a>
+            href={page <= 1 ? undefined : `?page=${page - 1}`}
+            aria-disabled={page <= 1}
+            className={
+              "inline-flex h-8 items-center justify-center rounded-sm border border-border px-3 text-xs text-foreground" +
+              (page <= 1 ? " pointer-events-none opacity-50" : "")
+            }
+          >
+            Previous
+          </a>
+          <a
+            href={page >= totalPages ? undefined : `?page=${page + 1}`}
+            aria-disabled={page >= totalPages}
+            className={
+              "inline-flex h-8 items-center justify-center rounded-sm border border-border px-3 text-xs text-foreground" +
+              (page >= totalPages ? " pointer-events-none opacity-50" : "")
+            }
+          >
+            Next
+          </a>
         </div>
       </div>
     </div>

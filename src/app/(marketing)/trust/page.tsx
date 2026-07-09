@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { MarketingPageHeader } from "@/features/marketing/marketing-page-header";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export const metadata = { title: "Trust Centre — ShadoPay" };
@@ -128,11 +127,12 @@ export default function TrustCentrePage() {
               anyone else does. Please report it privately rather than disclosing it publicly, and
               avoid accessing or modifying data that isn&apos;t yours.
             </p>
-            <Button asChild variant="outline" className="mt-4">
-              <Link href="/contact#disclosure">
-                Report a vulnerability <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+            <Link
+              href="/contact#disclosure"
+              className="mt-4 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all duration-200 ease-out h-10 px-4 py-2 border border-border bg-transparent hover:bg-surface-raised text-foreground hover:-translate-y-px active:translate-y-0"
+            >
+              Report a vulnerability <ArrowRight className="h-4 w-4" />
+            </Link>
           </section>
 
           <section id="system-status" className="scroll-mt-24">
@@ -141,11 +141,12 @@ export default function TrustCentrePage() {
               Real-time status for the API, checkout, dashboard, payouts, authentication, email, and
               webhook delivery is published continuously.
             </p>
-            <Button asChild variant="outline" className="mt-4">
-              <Link href="/status">
-                View system status <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+            <Link
+              href="/status"
+              className="mt-4 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all duration-200 ease-out h-10 px-4 py-2 border border-border bg-transparent hover:bg-surface-raised text-foreground hover:-translate-y-px active:translate-y-0"
+            >
+              View system status <ArrowRight className="h-4 w-4" />
+            </Link>
           </section>
 
           <section id="business-verification" className="scroll-mt-24">

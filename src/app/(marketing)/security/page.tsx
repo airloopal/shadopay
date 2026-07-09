@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowRight, Fingerprint, FileCheck, Server, Lock, KeyRound, Eye } from "lucide-react";
 import { MarketingPageHeader } from "@/features/marketing/marketing-page-header";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Security — ShadoPay" };
 
@@ -45,11 +44,12 @@ export default function SecurityPage() {
             The Trust Centre covers our infrastructure, compliance roadmap, incident response process,
             and how to report a vulnerability.
           </p>
-          <Button asChild>
-            <Link href="/trust">
-              Visit the Trust Centre <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+          <Link
+            href="/trust"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all duration-200 ease-out h-10 px-4 py-2 bg-accent text-accent-foreground shadow-soft hover:shadow-glow-accent hover:-translate-y-px active:translate-y-0"
+          >
+            Visit the Trust Centre <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </div>
     </div>

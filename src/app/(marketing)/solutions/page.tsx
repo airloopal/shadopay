@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowRight, Pill, Dice5, Flame, Cannabis, Dumbbell, Coins } from "lucide-react";
 import { MarketingPageHeader } from "@/features/marketing/marketing-page-header";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Solutions — ShadoPay" };
 
@@ -45,11 +44,12 @@ export default function SolutionsPage() {
             We evaluate high-risk categories case by case. If your business is legally operating and
             properly licensed, talk to our team.
           </p>
-          <Button asChild className="mt-6">
-            <Link href="/contact">
-              Talk to sales <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+          <Link
+            href="/contact"
+            className="mt-6 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all duration-200 ease-out h-10 px-4 py-2 bg-accent text-accent-foreground shadow-soft hover:shadow-glow-accent hover:-translate-y-px active:translate-y-0"
+          >
+            Talk to sales <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </div>
     </div>

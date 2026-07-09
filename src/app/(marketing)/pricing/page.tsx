@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Check, ArrowRight } from "lucide-react";
 import { MarketingPageHeader } from "@/features/marketing/marketing-page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Pricing — ShadoPay" };
 
@@ -52,11 +51,16 @@ export default function PricingPage() {
                     <Check className="h-3.5 w-3.5 shrink-0 text-success" /> {f}
                   </div>
                 ))}
-                <Button asChild className="mt-4 w-full" variant={plan.highlighted ? "default" : "outline"}>
-                  <Link href="/contact">
-                    Talk to sales <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
+                <Link
+                  href="/contact"
+                  className={
+                    plan.highlighted
+                      ? "mt-4 w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all duration-200 ease-out h-10 px-4 py-2 bg-accent text-accent-foreground shadow-soft hover:shadow-glow-accent hover:-translate-y-px active:translate-y-0"
+                      : "mt-4 w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all duration-200 ease-out h-10 px-4 py-2 border border-border bg-transparent hover:bg-surface-raised text-foreground hover:-translate-y-px active:translate-y-0"
+                  }
+                >
+                  Talk to sales <ArrowRight className="h-4 w-4" />
+                </Link>
               </CardContent>
             </Card>
           ))}
