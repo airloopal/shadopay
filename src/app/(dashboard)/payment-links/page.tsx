@@ -6,9 +6,9 @@ import { CopyLinkButton } from "@/features/payment-links/copy-link-button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import type { PaymentLinkStatus } from "@prisma/client";
 
 interface PageProps {
@@ -27,6 +27,9 @@ export default async function PaymentLinksPage({ searchParams }: PageProps) {
   });
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://pay.shadopay.dev";
+
+  const isPrevDisabled = page <= 1;
+  const isNextDisabled = page >= totalPages;
 
   return (
     <div className="space-y-6">
@@ -53,7 +56,12 @@ export default async function PaymentLinksPage({ searchParams }: PageProps) {
           </CardHeader>
           <CardContent className="space-y-4 pt-0">
             <form className="flex items-center gap-3" method="GET">
-              <Input name="q" placeholder="Search by title or description" defaultValue={params.q} className="max-w-xs" />
+              <Input
+                name="q"
+                placeholder="Search by title or description"
+                defaultValue={params.q}
+                className="max-w-xs"
+              />
               <select
                 name="status"
                 defaultValue={params.status ?? ""}
@@ -65,7 +73,9 @@ export default async function PaymentLinksPage({ searchParams }: PageProps) {
                 <option value="EXPIRED">Expired</option>
                 <option value="ARCHIVED">Archived</option>
               </select>
-              <Button type="submit" variant="outline">Filter</Button>
+              <Button type="submit" variant="outline">
+                Filter
+              </Button>
             </form>
 
             <Table>
@@ -93,14 +103,18 @@ export default async function PaymentLinksPage({ searchParams }: PageProps) {
                       <div className="text-foreground">{link.title}</div>
                       <CopyLinkButton url={`${appUrl}/pay/${link.slug}`} />
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{link.reference ?? "—"}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {link.reference ?? "—"}
+                    </TableCell>
                     <TableCell>
                       {link.amount ? formatCurrency(link.amount, link.currency) : "Customer-entered"}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={link.status} />
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{formatDate(link.createdAt)}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(link.createdAt)}
+                    </TableCell>
                     <TableCell className="text-right">
                       <form
                         action={togglePaymentLinkAction.bind(
@@ -120,33 +134,30 @@ export default async function PaymentLinksPage({ searchParams }: PageProps) {
             </Table>
 
             <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>Page {page} of {totalPages}</span>
+              <span>
+                Page {page} of {totalPages}
+              </span>
               <div className="flex gap-2">
-                <a
-  href={page <= 1 ? "#" : `?page=${page - 1}`}
-  aria-disabled={page <= 1}
-  className={`inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium transition-colors ${
-    page <= 1
-      ? "pointer-events-none opacity-50"
-      : "hover:bg-accent hover:text-accent-foreground"
-  }`}
->
-  Previous
-</a>
-
-<a
-  href={page >= totalPages ? "#" : `?page=${page + 1}`}
-  aria-disabled={page >= totalPages}
-  className={`inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium transition-colors ${
-    page >= totalPages
-      ? "pointer-events-none opacity-50"
-      : "hover:bg-accent hover:text-accent-foreground"
-  }`}
->
-  Next
-</a>
-                  <a href={`?page=${page + 1}`}>Next</a>
-                </Button>
+                
+                  href={isPrevDisabled ? undefined : `?page=${page - 1}`}
+                  aria-disabled={isPrevDisabled}
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                    isPrevDisabled && "pointer-events-none opacity-50"
+                  )}
+                >
+                  Previous
+                </a>
+                
+                  href={isNextDisabled ? undefined : `?page=${page + 1}`}
+                  aria-disabled={isNextDisabled}
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                    isNextDisabled && "pointer-events-none opacity-50"
+                  )}
+                >
+                  Next
+                </a>
               </div>
             </div>
           </CardContent>
