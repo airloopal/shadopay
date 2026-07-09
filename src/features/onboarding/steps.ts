@@ -14,14 +14,21 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   { number: 7, slug: "complete", label: "Complete" },
 ];
 
-export function stepBySlug(slug: string) {
-  return ONBOARDING_STEPS.find((s) => s.slug === slug);
+const DEFAULT_STEP: OnboardingStep = {
+  number: 1,
+  slug: "welcome",
+  label: "Welcome",
+};
+
+export function stepBySlug(slug: string): OnboardingStep {
+  return ONBOARDING_STEPS.find((step) => step.slug === slug) ?? DEFAULT_STEP;
 }
 
-export function stepByNumber(number: number) {
-  return ONBOARDING_STEPS.find((s) => s.number === number) ?? ONBOARDING_STEPS[0];
+export function stepByNumber(number: number): OnboardingStep {
+  return ONBOARDING_STEPS.find((step) => step.number === number) ?? DEFAULT_STEP;
 }
 
-export function nextStepSlug(currentNumber: number) {
-  return stepByNumber(Math.min(currentNumber + 1, ONBOARDING_STEPS.length)).slug;
+export function nextStepSlug(currentNumber: number): string {
+  const nextNumber = Math.min(currentNumber + 1, ONBOARDING_STEPS.length);
+  return stepByNumber(nextNumber).slug;
 }
