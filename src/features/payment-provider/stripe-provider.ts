@@ -20,7 +20,7 @@ export class StripeProvider implements PaymentProvider {
     if (!apiKey) {
       throw new Error("PAYMENT_PROVIDER_API_KEY is not set — cannot construct StripeProvider.");
     }
-    this.client = new Stripe(apiKey, { apiVersion: "2024-06-20" });
+    this.client = new Stripe(apiKey, { apiVersion: "2024-10-28.acacia" });
     this.webhookSecret = webhookSecret;
     const env = getPaymentEnvironment();
     this.environment = env === "live" ? "live" : "sandbox";
