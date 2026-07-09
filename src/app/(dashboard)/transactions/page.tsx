@@ -105,10 +105,29 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <span>Page {page} of {totalPages}</span>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled={page <= 1} asChild>
-            <a href={`?page=${page - 1}`}>Previous</a>
-          </Button>
-          <Button variant="outline" size="sm" disabled={page >= totalPages} asChild>
+          <a
+  href={page <= 1 ? "#" : `?page=${page - 1}`}
+  aria-disabled={page <= 1}
+  className={`inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium transition-colors ${
+    page <= 1
+      ? "pointer-events-none opacity-50"
+      : "hover:bg-accent hover:text-accent-foreground"
+  }`}
+>
+  Previous
+</a>
+
+<a
+  href={page >= totalPages ? "#" : `?page=${page + 1}`}
+  aria-disabled={page >= totalPages}
+  className={`inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium transition-colors ${
+    page >= totalPages
+      ? "pointer-events-none opacity-50"
+      : "hover:bg-accent hover:text-accent-foreground"
+  }`}
+>
+  Next
+</a>
             <a href={`?page=${page + 1}`}>Next</a>
           </Button>
         </div>
