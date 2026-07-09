@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ShieldCheck, Lock, Link2, Wallet, Code2, Eye, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 const fadeUp = {
@@ -60,14 +59,18 @@ export function HomePage() {
           transition={{ delay: 0.15 }}
           className="mt-10 flex items-center gap-3"
         >
-          <Button asChild size="lg">
-            <Link href="/sign-up">
-              Start now <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-          <Button asChild size="lg" variant="outline">
-            <Link href="/developers">View the API</Link>
-          </Button>
+          <Link
+            href="/sign-up"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 ease-out h-12 px-8 bg-accent text-accent-foreground shadow-soft hover:shadow-glow-accent hover:-translate-y-px active:translate-y-0"
+          >
+            Start now <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link
+            href="/developers"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 ease-out h-12 px-8 border border-border bg-transparent hover:bg-surface-raised text-foreground hover:-translate-y-px active:translate-y-0"
+          >
+            View the API
+          </Link>
         </motion.div>
 
         <motion.div
@@ -146,11 +149,12 @@ export function HomePage() {
             We work with legitimate, regulated businesses across nutraceuticals, iGaming, adult, and
             other high-risk categories — with the compliance infrastructure to match.
           </p>
-          <Button asChild variant="outline" className="mt-6">
-            <Link href="/trust">
-              Visit the Trust Centre <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+          <Link
+            href="/trust"
+            className="mt-6 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all duration-200 ease-out h-10 px-4 py-2 border border-border bg-transparent hover:bg-surface-raised text-foreground hover:-translate-y-px active:translate-y-0"
+          >
+            Visit the Trust Centre <ArrowRight className="h-4 w-4" />
+          </Link>
         </motion.div>
       </Section>
     </div>

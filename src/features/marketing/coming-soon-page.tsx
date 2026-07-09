@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowRight, Clock } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { MarketingPageHeader } from "@/features/marketing/marketing-page-header";
 
 export function ComingSoonPage({
@@ -22,11 +21,12 @@ export function ComingSoonPage({
         <p className="max-w-md text-muted-foreground">
           We&apos;re building this out. In the meantime, reach out directly and we&apos;ll get back to you.
         </p>
-        <Button asChild variant="outline">
-          <Link href="/contact">
-            Contact us <ArrowRight className="h-4 w-4" />
-          </Link>
-        </Button>
+        <Link
+          href="/contact"
+          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all duration-200 ease-out h-10 px-4 py-2 border border-border bg-transparent hover:bg-surface-raised text-foreground hover:-translate-y-px active:translate-y-0"
+        >
+          Contact us <ArrowRight className="h-4 w-4" />
+        </Link>
       </div>
     </div>
   );

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -45,9 +44,12 @@ export function MarketingNav() {
           <Link href="/sign-in" className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline">
             Sign in
           </Link>
-          <Button asChild size="sm">
-            <Link href="/sign-up">Get started</Link>
-          </Button>
+          <Link
+            href="/sign-up"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all duration-200 ease-out h-8 rounded-sm px-3 text-xs bg-accent text-accent-foreground shadow-soft hover:shadow-glow-accent hover:-translate-y-px active:translate-y-0"
+          >
+            Get started
+          </Link>
         </div>
       </div>
     </header>
