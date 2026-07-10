@@ -1,7 +1,15 @@
 import { FlaskConical, ShieldCheck, AlertTriangle } from "lucide-react";
-import { getPaymentEnvironment } from "@/features/payment-provider";
+import { getPaymentEnvironment, isPilotMode } from "@/features/payment-provider";
 
 export function EnvironmentBadge() {
+  if (isPilotMode()) {
+    return (
+      <span className="flex items-center gap-1.5 rounded-full border border-warning/30 bg-warning-muted px-2.5 py-1 text-xs text-warning">
+        <FlaskConical className="h-3 w-3" /> Demo — no real money
+      </span>
+    );
+  }
+
   const environment = getPaymentEnvironment();
 
   if (environment === "unconfigured") {

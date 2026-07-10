@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { getPaymentLinkForCheckout } from "@/features/checkout/queries";
 import { CheckoutFlow } from "@/features/checkout/checkout-flow";
 import { createPaymentForCheckout } from "@/features/payments-engine/engine";
-import { isPaymentProviderConfigured, getPaymentEnvironment } from "@/features/payment-provider";
+import { isPaymentProviderConfigured, getPaymentEnvironment, isPilotMode } from "@/features/payment-provider";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -40,24 +40,30 @@ export default async function PayPage({ params }: PageProps) {
     );
   }
 
+  const pilotMode = isPilotMode();
   const environment = getPaymentEnvironment();
 
-  if (!isPaymentProviderConfigured()) {
-    return (
-      <NoticeCard
-        title="Payments aren't set up yet"
-        body="This merchant hasn't finished connecting a payment provider. Please check back soon."
-      />
-    );
-  }
+  // In pilot mode, checkout is a pure simulation and never touches a real
+  // provider — so it doesn't matter whether one is configured, and "live"
+  // approval gating doesn't apply since nothing live ever happens here.
+  if (!pilotMode) {
+    if (!isPaymentProviderConfigured()) {
+      return (
+        <NoticeCard
+          title="Payments aren't set up yet"
+          body="This merchant hasn't finished connecting a payment provider. Please check back soon."
+        />
+      );
+    }
 
-  if (environment === "live" && link.merchantStatus !== "APPROVED") {
-    return (
-      <NoticeCard
-        title="This business isn't approved for live payments yet"
-        body="Live payments open once the business completes verification. Please check back soon."
-      />
-    );
+    if (environment === "live" && link.merchantStatus !== "APPROVED") {
+      return (
+        <NoticeCard
+          title="This business isn't approved for live payments yet"
+          body="Live payments open once the business completes verification. Please check back soon."
+        />
+      );
+    }
   }
 
   const headerList = await headers();
@@ -84,6 +90,7 @@ export default async function PayPage({ params }: PageProps) {
       currency={link.currency}
       primaryColor={link.merchant.primaryColor}
       environment={environment}
+      isPilotMode={pilotMode}
     />
   );
 }

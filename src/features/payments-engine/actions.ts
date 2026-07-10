@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { transitionPayment, recordPaymentEvent } from "@/features/payments-engine/engine";
-import { getPaymentProvider, isPaymentProviderConfigured, getPaymentEnvironment } from "@/features/payment-provider";
+import { getPaymentProvider, isPaymentProviderConfigured, getPaymentEnvironment, isPilotMode } from "@/features/payment-provider";
 import type { PaymentStatus } from "@prisma/client";
 
 export interface StartProviderCheckoutResult {
@@ -14,31 +14,32 @@ export interface StartProviderCheckoutResult {
 
 /**
  * Called when the customer clicks "Continue to secure payment" on hosted
- * checkout. Creates a real Stripe Checkout Session for the payment and
- * returns the URL to redirect the browser to. The actual status transition
- * (PENDING -> PROCESSING -> SUCCEEDED/FAILED) happens later, driven by the
- * Stripe webhook — never assumed client-side.
+ * checkout.
+ *
+ * PILOT_MODE=true: never touches Stripe (or any provider). Runs the
+ * payment straight through the existing engine (PENDING -> PROCESSING ->
+ * SUCCEEDED) as a simulation, then hands back our own return-page URL —
+ * the same one Stripe would redirect to — so the client-side code and the
+ * return page itself need zero changes to support this. This is a demo
+ * outcome only; no money moves and no provider is contacted.
+ *
+ * Otherwise: creates a real Stripe Checkout Session and returns the URL to
+ * redirect the browser to. The actual status transition happens later,
+ * driven by the Stripe webhook — never assumed client-side.
  */
 export async function startProviderCheckoutAction(
   paymentId: string,
   customerAmount?: number,
   clientEmail?: string
 ): Promise<StartProviderCheckoutResult> {
-  if (!isPaymentProviderConfigured()) {
-    return { error: "Payment provider is not configured yet. Please contact the merchant." };
-  }
-
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
     include: { merchant: true, paymentLink: true },
   });
   if (!payment) return { error: "Payment not found." };
 
-  // Live mode requires the merchant to be approved before payment links work.
-  const environment = getPaymentEnvironment();
-  if (environment === "live" && payment.merchant.status !== "APPROVED") {
-    return { error: "This business is not yet approved to accept live payments." };
-  }
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const slug = payment.paymentLink?.slug ?? "";
 
   if (customerAmount != null || clientEmail) {
     await prisma.payment.update({
@@ -50,9 +51,29 @@ export async function startProviderCheckoutAction(
     });
   }
 
+  if (isPilotMode()) {
+    await recordPaymentEvent(payment.id, "submitted", "Demo payment submitted — no real money involved");
+    try {
+      await transitionPayment(payment.id, "PROCESSING");
+      await transitionPayment(payment.id, "SUCCEEDED", { clientEmail });
+    } catch (error) {
+      console.error("Pilot-mode simulated payment failed to transition:", error);
+      return { error: "This demo payment couldn't be completed. Please try again." };
+    }
+    return { redirectUrl: `${appUrl}/pay/${slug}/return?payment=${payment.id}&result=success` };
+  }
+
+  if (!isPaymentProviderConfigured()) {
+    return { error: "Payment provider is not configured yet. Please contact the merchant." };
+  }
+
+  // Live mode requires the merchant to be approved before payment links work.
+  const environment = getPaymentEnvironment();
+  if (environment === "live" && payment.merchant.status !== "APPROVED") {
+    return { error: "This business is not yet approved to accept live payments." };
+  }
+
   const finalAmount = customerAmount ?? Number(payment.amount);
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const slug = payment.paymentLink?.slug ?? "";
 
   try {
     const session = await getPaymentProvider().createCheckoutSession({
@@ -93,9 +114,10 @@ export async function cancelPaymentAction(paymentId: string) {
  * state (failed, expired, refunded, ...) can be exercised without waiting
  * for a real payment rail. Never exposed to merchants or customers.
  *
- * For REFUNDED specifically: if the payment has a real provider payment id,
- * this calls the provider's actual refund API first — it does not just
- * fake the reversal internally.
+ * For REFUNDED specifically: if the payment has a real provider payment id
+ * (never true in PILOT_MODE, since pilot payments never reach a real
+ * provider), this calls the provider's actual refund API first — it does
+ * not just fake the reversal internally.
  */
 export async function adminUpdatePaymentStatusAction(formData: FormData) {
   const session = await requireRole("PLATFORM_ADMIN", "PLATFORM_COMPLIANCE");
@@ -107,7 +129,7 @@ export async function adminUpdatePaymentStatusAction(formData: FormData) {
     throw new Error("Missing payment or target status.");
   }
 
-  if (nextStatus === "REFUNDED") {
+  if (nextStatus === "REFUNDED" && !isPilotMode()) {
     const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
     if (payment?.providerPaymentId && isPaymentProviderConfigured()) {
       const refund = await getPaymentProvider().refundPayment(payment.providerPaymentId, Number(payment.amount));

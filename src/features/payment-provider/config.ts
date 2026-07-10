@@ -1,6 +1,20 @@
 export type PaymentEnvironment = "unconfigured" | "sandbox" | "live";
 
 /**
+ * PILOT_MODE gates the entire deployment into a visual, skeletal pilot:
+ * sign-up, onboarding, payment-link creation, hosted checkout, dashboard
+ * balances/transactions, and admin review all work normally, but checkout
+ * never calls Stripe (or any payment provider) and never claims real money
+ * moved. Payment outcomes are simulated directly through the existing
+ * payments engine instead. This takes priority over PAYMENT_PROVIDER_*
+ * configuration — even a fully configured live Stripe key is ignored while
+ * PILOT_MODE=true, by design.
+ */
+export function isPilotMode(): boolean {
+  return process.env.PILOT_MODE === "true";
+}
+
+/**
  * Reads provider configuration from environment variables. Nothing here is
  * ever hardcoded — an unconfigured environment is a valid, expected state
  * (e.g. local development without provider credentials) and is handled

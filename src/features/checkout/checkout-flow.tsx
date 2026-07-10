@@ -20,6 +20,7 @@ interface CheckoutFormProps {
   currency: string;
   primaryColor: string;
   environment: PaymentEnvironment;
+  isPilotMode: boolean;
 }
 
 type Step = "form" | "redirecting" | "cancelled" | "error";
@@ -34,6 +35,7 @@ export function CheckoutFlow({
   currency,
   primaryColor,
   environment,
+  isPilotMode,
 }: CheckoutFormProps) {
   const [step, setStep] = useState<Step>("form");
   const [customerAmount, setCustomerAmount] = useState(amount ?? "");
@@ -77,10 +79,16 @@ export function CheckoutFlow({
               transition={{ duration: 0.25 }}
               className="rounded-lg border border-border bg-card/90 p-8 shadow-glass"
             >
-              {environment === "sandbox" && (
+              {isPilotMode ? (
                 <div className="mb-6 flex items-center justify-center gap-1.5 rounded-full border border-warning/30 bg-warning-muted px-3 py-1 text-xs text-warning">
-                  <FlaskConical className="h-3 w-3" /> Test mode — no real charge will be made
+                  <FlaskConical className="h-3 w-3" /> Demo — no real money is involved
                 </div>
+              ) : (
+                environment === "sandbox" && (
+                  <div className="mb-6 flex items-center justify-center gap-1.5 rounded-full border border-warning/30 bg-warning-muted px-3 py-1 text-xs text-warning">
+                    <FlaskConical className="h-3 w-3" /> Test mode — no real charge will be made
+                  </div>
+                )
               )}
 
               <div className="flex flex-col items-center gap-3 text-center">
@@ -130,7 +138,7 @@ export function CheckoutFlow({
                 </div>
 
                 <Button type="submit" className="w-full" size="lg">
-                  Continue to secure payment
+                  {isPilotMode ? "Simulate demo payment" : "Continue to secure payment"}
                 </Button>
 
                 <button
@@ -161,7 +169,9 @@ export function CheckoutFlow({
                 transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
                 className="h-8 w-8 rounded-full border-2 border-border border-t-accent"
               />
-              <p className="text-sm text-muted-foreground">Redirecting to secure payment…</p>
+              <p className="text-sm text-muted-foreground">
+                {isPilotMode ? "Simulating demo payment…" : "Redirecting to secure payment…"}
+              </p>
             </motion.div>
           )}
 

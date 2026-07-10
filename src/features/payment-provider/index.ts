@@ -1,8 +1,8 @@
 import { StripeProvider } from "@/features/payment-provider/stripe-provider";
-import { getPaymentProviderConfig, isPaymentProviderConfigured, getPaymentEnvironment } from "@/features/payment-provider/config";
+import { getPaymentProviderConfig, isPaymentProviderConfigured, getPaymentEnvironment, isPilotMode } from "@/features/payment-provider/config";
 import type { PaymentProvider } from "@/features/payment-provider/types";
 
-export { isPaymentProviderConfigured, getPaymentEnvironment };
+export { isPaymentProviderConfigured, getPaymentEnvironment, isPilotMode };
 export type { PaymentEnvironment } from "@/features/payment-provider/config";
 
 let cached: PaymentProvider | null = null;
@@ -17,6 +17,12 @@ let cached: PaymentProvider | null = null;
  * configured" state rather than silently faking a payment.
  */
 export function getPaymentProvider(): PaymentProvider {
+  if (isPilotMode()) {
+    throw new Error(
+      "PILOT_MODE is enabled — the real payment provider must never be called. This is a bug in the calling code."
+    );
+  }
+
   if (!isPaymentProviderConfigured()) {
     throw new Error(
       "No payment provider is configured. Set PAYMENT_PROVIDER_API_KEY (and PAYMENT_WEBHOOK_SECRET) to enable checkout."
