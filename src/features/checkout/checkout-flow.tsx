@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lock, XCircle, FlaskConical } from "lucide-react";
+import { Lock, XCircle, FlaskConical, CreditCard, Landmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,8 +42,7 @@ export function CheckoutFlow({
   const [clientEmail, setClientEmail] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  async function handleContinue(e: React.FormEvent) {
-    e.preventDefault();
+  async function submitPayment() {
     setStep("redirecting");
 
     const result = await startProviderCheckoutAction(
@@ -59,6 +58,11 @@ export function CheckoutFlow({
     }
 
     window.location.href = result.redirectUrl;
+  }
+
+  async function handleContinue(e: React.FormEvent) {
+    e.preventDefault();
+    await submitPayment();
   }
 
   async function handleCancel() {
@@ -81,7 +85,7 @@ export function CheckoutFlow({
             >
               {isPilotMode ? (
                 <div className="mb-6 flex items-center justify-center gap-1.5 rounded-full border border-warning/30 bg-warning-muted px-3 py-1 text-xs text-warning">
-                  <FlaskConical className="h-3 w-3" /> Demo — no real money is involved
+                  <FlaskConical className="h-3 w-3" /> Demo payment methods — no real payment will be processed.
                 </div>
               ) : (
                 environment === "sandbox" && (
@@ -137,9 +141,35 @@ export function CheckoutFlow({
                   />
                 </div>
 
-                <Button type="submit" className="w-full" size="lg">
-                  {isPilotMode ? "Simulate demo payment" : "Continue to secure payment"}
-                </Button>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="submit"
+                    className="col-span-2 flex h-14 items-center justify-center gap-2 rounded-xl bg-foreground text-sm font-medium text-background transition-all duration-200 hover:-translate-y-px active:translate-y-0 sm:col-span-1"
+                  >
+                    {isPilotMode ? "Simulate Apple Pay" : "Apple Pay"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={submitPayment}
+                    className="flex h-14 items-center justify-center gap-2 rounded-xl border border-border bg-white/[0.02] text-sm font-medium text-foreground transition-all duration-200 hover:bg-surface-raised hover:-translate-y-px active:translate-y-0 sm:col-span-1"
+                  >
+                    {isPilotMode ? "Simulate Google Pay" : "Google Pay"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={submitPayment}
+                    className="flex h-14 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-medium text-accent-foreground shadow-soft transition-all duration-200 hover:shadow-glow-accent hover:-translate-y-px active:translate-y-0"
+                  >
+                    <CreditCard className="h-4 w-4" /> {isPilotMode ? "Simulate Card Payment" : "Card"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={submitPayment}
+                    className="flex h-14 items-center justify-center gap-2 rounded-xl border border-border bg-white/[0.02] text-sm font-medium text-foreground transition-all duration-200 hover:bg-surface-raised hover:-translate-y-px active:translate-y-0"
+                  >
+                    <Landmark className="h-4 w-4" /> {isPilotMode ? "Simulate Bank Payment" : "Bank Transfer"}
+                  </button>
+                </div>
 
                 <button
                   type="button"
@@ -150,7 +180,7 @@ export function CheckoutFlow({
                 </button>
 
                 <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-                  <Lock className="h-3 w-3" /> Secure private payment
+                  <Lock className="h-3 w-3" /> Protected by ShadoPay — secure private payment
                 </p>
               </form>
             </motion.div>

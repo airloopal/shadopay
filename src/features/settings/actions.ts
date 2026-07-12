@@ -5,6 +5,54 @@ import { requireActiveMerchant } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import type { SettlementSchedule } from "@prisma/client";
 
+/**
+ * Sole-trader Settings (pivot batch 2) — Profile section. Full name lives
+ * on the Better Auth User record; phone reuses Merchant.phone (already
+ * collected during onboarding) since for a sole trader, business phone and
+ * personal phone are effectively the same thing. No schema change.
+ */
+export async function updateProfileAction(formData: FormData) {
+  const { session, merchant } = await requireActiveMerchant();
+
+  const name = String(formData.get("name") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim();
+
+  if (name) {
+    await prisma.user.update({ where: { id: session.user.id }, data: { name } });
+  }
+  await prisma.merchant.update({ where: { id: merchant.id }, data: { phone: phone || null } });
+
+  revalidatePath("/settings");
+}
+
+/**
+ * Sole-trader Settings (pivot batch 2) — Business details section. Maps
+ * onto existing Merchant fields (tradingName/displayName, category,
+ * businessDescription) plus MerchantBranding.supportEmail — no new model
+ * or column needed.
+ */
+export async function updateBusinessDetailsAction(formData: FormData) {
+  const { merchant } = await requireActiveMerchant();
+
+  const tradingName = String(formData.get("tradingName") ?? merchant.displayName);
+  const category = String(formData.get("category") ?? merchant.category);
+  const businessDescription = String(formData.get("businessDescription") ?? "") || null;
+  const supportEmail = String(formData.get("supportEmail") ?? "") || null;
+
+  await prisma.merchant.update({
+    where: { id: merchant.id },
+    data: { tradingName, displayName: tradingName, category, businessDescription },
+  });
+
+  await prisma.merchantBranding.upsert({
+    where: { merchantId: merchant.id },
+    create: { merchantId: merchant.id, supportEmail },
+    update: { supportEmail },
+  });
+
+  revalidatePath("/settings");
+}
+
 export async function updateBusinessProfileAction(formData: FormData) {
   const { merchant } = await requireActiveMerchant();
 
