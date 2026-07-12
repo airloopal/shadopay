@@ -6,8 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 
-const TONE_TO_BADGE_VARIANT: Record<FriendlyStatusTone, "default" | "success" | "warning" | "danger"> = {
+const TONE_TO_BADGE_VARIANT: Record<
+  FriendlyStatusTone,
+  "default" | "success" | "warning" | "danger"
+> = {
   success: "success",
+  pending: "default",
+  info: "default",
   warning: "warning",
   danger: "danger",
   muted: "default",
