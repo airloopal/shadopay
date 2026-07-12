@@ -1,60 +1,112 @@
-export type FriendlyPaymentStatus =
-  | "Received"
-  | "Pending"
-  | "Refunded"
-  | "Failed"
-  | "Cancelled"
-  | "Disputed";
+export type FriendlyStatusTone =
+  | "success"
+  | "pending"
+  | "info"
+  | "danger"
+  | "muted"
+  | "warning";
 
-const FRIENDLY_STATUS_MAP: Record<string, FriendlyPaymentStatus> = {
-  SUCCEEDED: "Received",
-  RECEIVED: "Received",
-  PAID: "Received",
+export interface FriendlyStatus {
+  label: string;
+  tone: FriendlyStatusTone;
+}
 
-  PENDING: "Pending",
-  PROCESSING: "Pending",
-  REQUIRES_ACTION: "Pending",
+const FRIENDLY_STATUS_MAP: Record<string, FriendlyStatus> = {
+  SUCCEEDED: {
+    label: "Received",
+    tone: "success",
+  },
+  RECEIVED: {
+    label: "Received",
+    tone: "success",
+  },
+  PAID: {
+    label: "Received",
+    tone: "success",
+  },
 
-  REFUNDED: "Refunded",
-  PARTIALLY_REFUNDED: "Refunded",
+  PENDING: {
+    label: "Pending",
+    tone: "pending",
+  },
+  PROCESSING: {
+    label: "Pending",
+    tone: "pending",
+  },
+  REQUIRES_ACTION: {
+    label: "Pending",
+    tone: "pending",
+  },
 
-  FAILED: "Failed",
-  EXPIRED: "Failed",
+  REFUNDED: {
+    label: "Refunded",
+    tone: "info",
+  },
+  PARTIALLY_REFUNDED: {
+    label: "Refunded",
+    tone: "info",
+  },
 
-  CANCELLED: "Cancelled",
-  CANCELED: "Cancelled",
+  FAILED: {
+    label: "Failed",
+    tone: "danger",
+  },
+  EXPIRED: {
+    label: "Failed",
+    tone: "danger",
+  },
 
-  DISPUTED: "Disputed",
-  CHARGEBACK: "Disputed",
+  CANCELLED: {
+    label: "Cancelled",
+    tone: "muted",
+  },
+  CANCELED: {
+    label: "Cancelled",
+    tone: "muted",
+  },
+
+  DISPUTED: {
+    label: "Disputed",
+    tone: "warning",
+  },
+  CHARGEBACK: {
+    label: "Disputed",
+    tone: "warning",
+  },
+};
+
+const DEFAULT_STATUS: FriendlyStatus = {
+  label: "Pending",
+  tone: "pending",
 };
 
 export function getFriendlyStatus(
   status: string | null | undefined
-): FriendlyPaymentStatus {
+): FriendlyStatus {
   if (!status) {
-    return "Pending";
+    return DEFAULT_STATUS;
   }
 
-  return FRIENDLY_STATUS_MAP[status.toUpperCase()] ?? "Pending";
+  return FRIENDLY_STATUS_MAP[status.toUpperCase()] ?? DEFAULT_STATUS;
 }
 
 export function getFriendlyStatusClass(
   status: string | null | undefined
 ): string {
-  const friendlyStatus = getFriendlyStatus(status);
+  const { tone } = getFriendlyStatus(status);
 
-  switch (friendlyStatus) {
-    case "Received":
+  switch (tone) {
+    case "success":
       return "bg-emerald-500/10 text-emerald-400";
-    case "Pending":
+    case "pending":
       return "bg-amber-500/10 text-amber-400";
-    case "Refunded":
+    case "info":
       return "bg-sky-500/10 text-sky-400";
-    case "Failed":
+    case "danger":
       return "bg-red-500/10 text-red-400";
-    case "Cancelled":
+    case "muted":
       return "bg-zinc-500/10 text-zinc-400";
-    case "Disputed":
+    case "warning":
       return "bg-orange-500/10 text-orange-400";
     default:
       return "bg-zinc-500/10 text-zinc-400";
