@@ -11,8 +11,13 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { markInvoiceSentAction } from "@/features/invoices/actions";
 import type { FriendlyStatusTone } from "@/features/dashboard/friendly-status";
 
-const TONE_TO_BADGE_VARIANT: Record<FriendlyStatusTone, "default" | "success" | "warning" | "danger"> = {
+const TONE_TO_BADGE_VARIANT: Record<
+  FriendlyStatusTone,
+  "default" | "success" | "warning" | "danger"
+> = {
   success: "success",
+  pending: "default",
+  info: "default",
   warning: "warning",
   danger: "danger",
   muted: "default",
