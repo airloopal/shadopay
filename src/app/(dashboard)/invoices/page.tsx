@@ -6,14 +6,7 @@ import { getFriendlyInvoiceStatus } from "@/features/invoices/friendly-invoice-s
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { FriendlyStatusTone } from "@/features/dashboard/friendly-status";
-
-const TONE_TO_BADGE_VARIANT: Record<FriendlyStatusTone, "default" | "success" | "warning" | "danger"> = {
-  success: "success",
-  warning: "warning",
-  danger: "danger",
-  muted: "default",
-};
+import { TONE_TO_BADGE_VARIANT } from "@/features/dashboard/friendly-status";
 
 export default async function InvoicesPage() {
   const { merchant } = await requireActiveMerchant();

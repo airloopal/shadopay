@@ -1,22 +1,10 @@
 import { requireActiveMerchant } from "@/lib/session";
 import { listTransactions } from "@/features/transactions/queries";
-import { getFriendlyStatus, type FriendlyStatusTone } from "@/features/dashboard/friendly-status";
+import { getFriendlyStatus, TONE_TO_BADGE_VARIANT } from "@/features/dashboard/friendly-status";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
-
-const TONE_TO_BADGE_VARIANT: Record<
-  FriendlyStatusTone,
-  "default" | "success" | "warning" | "danger"
-> = {
-  success: "success",
-  pending: "default",
-  info: "default",
-  warning: "warning",
-  danger: "danger",
-  muted: "default",
-};
 
 export default async function ActivityPage() {
   const { merchant } = await requireActiveMerchant();
